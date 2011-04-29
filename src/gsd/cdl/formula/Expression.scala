@@ -242,8 +242,8 @@ object TypeGraph {
 					}
 				}
 				else {
-                                        println("Error 245")
 					errors += new TypeError(newType, oldType, exprs.head.expr)
+					println("Error 245: " + new TypeError(newType, oldType, exprs.head.expr))
 					IF[(CompilationOptions.TRACE_TYPE_PROPAGATION)#v] {
 						println("!!!error recorded")
 					}
@@ -415,8 +415,8 @@ abstract class GStaticTypedBinaryExpression(
 	override def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (outputType, List(inputType, inputType))
 	override def toString = "(" + left + ' ' + operator + ' ' + right + ")"
 	override def getType() = outputType
-        def getLeft :GExpression =  left
-        def getRight :GExpression =  right
+	def getLeft :GExpression =  left
+	def getRight :GExpression =  right
 }
 
 abstract class GStaticReturnBinaryExpression(

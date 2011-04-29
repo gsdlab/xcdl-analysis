@@ -7,6 +7,8 @@ import org.kiama.rewriting.Rewriter._
 import TypeHelper._
 import GRewriter._
 import ConditionalCompilation._
+import java.io._
+
 
 object CompilationOptions {
 	/**
@@ -57,18 +59,18 @@ object Main {
 	* a configuration cannot be exported because this constraint will never be satisfied
 	*/
 	case class UnsatisfiableConstraintError(exp:GExpression) extends Error {
-		override def toString = exp.toString
+		override def toString = "Expression causing the model to be unsat: " + exp.toString
 	}
 
 	/**
 	* Represents a "dead feature" - a feature that will never be active.
 	*/
 	case class DeadFeatureError(id:String) extends Error {
-		override def toString = id
+		override def toString = id + " is a dead feature"
 	}
 
 	case class DuplicatedIDs(id:String) extends Error {
-		override def toString = "Duplicated id:" + id
+		override def toString = "Duplicated id: " + id
 	}
 
 	def parseFile(file:String):(Map[String, GVariable], List[GExpression], List[Error]) = convertToGeneralModel(EcosIML.parseFile(file))
@@ -76,28 +78,50 @@ object Main {
 	def main(args:Array[String]) {
 		import java.io._
 
-                println("main being executed...")
+    println("main being executed...")
 
-                println("parsing the file...")
-								val nodes = EcosIML.parseFile(args(0))
-                val (vars, constraints, errors) = convertToGeneralModel(nodes)
+    println("parsing the file...")
+    val nodes = EcosIML.parseFile(args(0))
+    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = convertToGeneralModelFull(nodes)
+    val out = new java.io.FileWriter("result.log")
+    out.write("*******Vars*****\n")
+    vars.foreach(pair => out.write(pair._1 + ":" + TypeGraph.getType(pair._2) + "\n"))
+    out.write("*******Constraints*****\n")
+    constraints.foreach(c=> out.write(c.toString + "\n"))
+    out.write("*******Errors*****\n")
+    errors.foreach(e=> out.write(e + "\n"))
+    out.close
 
-
-                val out = new java.io.FileWriter("result.log")
-                out.write("*******Vars*****\n")
-                vars.foreach(pair => out.write(pair._1 + ":" + TypeGraph.getType(pair._2) + "\n"))
-                out.write("*******Constraints*****\n")
-                constraints.foreach(c=> out.write(c.toString + "\n"))
-                out.write("*******Errors*****\n")
-                errors.foreach(e=> out.write(e + "\n"))
-                out.close
-
-                val serialization = new ObjectOutputStream(new FileOutputStream("result.data"))
-                serialization.writeObject(vars)
-                serialization.writeObject(constraints)
-                serialization.close
+    val serialization = new ObjectOutputStream(new FileOutputStream("result.data"))
+    serialization.writeObject(vars)
+    serialization.writeObject(constraints)
+    serialization.close
 	}
 
+  def depth( id : String, childParentMap : Map[String,String] ): Int =
+    childParentMap.get( id ) match {
+      case Some(n) => depth( n, childParentMap ) + 1
+      case None => 0
+    }
+
+  def outputHistogram( model : CDLModel, values : List[Int], file : String ){
+		val pw = new PrintWriter( new File( file ) )
+		aggregateValuesForGnuplot( values, 1 ).
+            foreach( x => pw.println( x._1 + "," + x._2 ) )
+		pw.close();
+	}
+
+  def aggregateValuesForGnuplot( values : List[Int], raster : Int ) = {
+    val ret = mutable.Map[Int, Int]()
+    for(f <- values ){
+      val newValue:Int = ( ( f / raster ) * raster ) + raster/2;
+      ret.get( newValue ) match{
+        case None => ret + (newValue -> 1)
+        case Some(v) => ret + ( newValue -> ( v + 1 ) )
+      }
+    }
+		Map[Int,Int]() ++ ret
+	}
         /**
          * Node is enumeration if
          * It's legal values are only list of strings
@@ -145,9 +169,14 @@ object Main {
 		val result = for((v, list) <- m; k <- list ) yield (k, v)
 		return result.toMap
 	}
+
+  def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
+    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = convertToGeneralModelFull(nodes)
+    (vars, constraints, errors)
+  }
 	
 	
-	def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
+	def convertToGeneralModelFull(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], Map[String, GExpression], Map[String, GExpression], List[Error]) = {
 		var aliases = mutable.Map[String, GExpression]()
 		val variables = mutable.Map[String, GVariable]()
 		val errors = mutable.ListBuffer[Error]()
@@ -211,20 +240,20 @@ object Main {
                       val Some(LegalValuesOption(ranges)) = n.legalValues
                       ranges.foreach((range:Range) => {
                           range.asInstanceOf[SingleValueRange].v match {
-                            case StringLiteral(v) => {
-                                // if this enumeration has been encountered, add id to it
-                                if (enumVariables.contains(Utils.guardEnumValue(v))) {
-                                        // TODO: get rid of all quotes in guardEnumValue function
-                                        val newEnumName = Utils.guardEnumValue(v) + "_" + n.id
-                                        enumVariables += newEnumName
-                                        enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName)
-                                        // CDL2GEnumExpression(StringLiteral(newEnumName))
-                                        //throw new Exception(Utils.guardEnumValue(v))
-                                } else {
+														case StringLiteral(v) => {
+																	// if this enumeration has been encountered, add id to it
+																	if (enumVariables.contains(Utils.guardEnumValue(v))) {
+                                    // TODO: get rid of all quotes in guardEnumValue function																		
+																		val newEnumName = Utils.guardEnumValue(v) + "_" + n.id 
+																		enumVariables += newEnumName
+																		enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName) 
+// CDL2GEnumExpression(StringLiteral(newEnumName))
+																		//throw new Exception(Utils.guardEnumValue(v))
+																	} else {
                                     enumVariables += Utils.guardEnumValue(v)
-                                    enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), Utils.guardEnumValue(v))
-                                    // CDL2GEnumExpression(StringLiteral(Utils.guardEnumValue(v)))
-                                   }
+																		enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), Utils.guardEnumValue(v))
+// CDL2GEnumExpression(StringLiteral(Utils.guardEnumValue(v)))
+																	}
                                 }
                             case _ => throw new Exception("Enumeration should be of type StringLiteral!")
                           }
@@ -337,25 +366,25 @@ object Main {
 					aliases.put(id+"_data", newCl)
 				case Node(id,_,_,_,BoolDataFlavor,_,None,_,_,_,_,_) =>
 					// TODO: Deal with BoolDataFlavor enumerations
-                                  if (isEnumeration(node)) {
-                                      val nv_bool = GVariable(id+"_bool_var")
-                                      setType(nv_bool, BoolType)
-                                      val nv_data = GVariable(id+"_scalar_var")
-                                      setType(nv_data, StringType | IntType | EnumType)
-                                      nv_data.setEnums(enums.get(id).getOrElse(null))
-                                      variables.put(nv_bool.id, nv_bool)
-                                      variables.put(nv_data.id, nv_data)
-                                      aliases.put(id+"_effective", GAnd(GAliasReference(id+"_active"), nv_bool))
-                                      aliases.put(id+"_data", nv_data)
-                                  } else {
-                                      val nv_bool = GVariable(id+"_bool_var")
-                                      setType(nv_bool, BoolType)
-                                      val nv_data = GVariable(id+"_data_var")
-                                      setType(nv_data, StringType | IntType)
-                                      variables.put(nv_bool.id, nv_bool)
-                                      variables.put(nv_data.id, nv_data)
-                                      aliases.put(id+"_effective", GAnd(GAliasReference(id+"_active"), nv_bool))
-                                      aliases.put(id+"_data", nv_data)
+          if (isEnumeration(node)) {
+						val nv_bool = GVariable(id+"_bool_var")
+						setType(nv_bool, BoolType)
+						val nv_data = GVariable(id+"_scalar_var")
+						setType(nv_data, StringType | IntType | EnumType)
+            nv_data.setEnums(enums.get(id).getOrElse(null))
+            variables.put(nv_bool.id, nv_bool)
+						variables.put(nv_data.id, nv_data)
+						aliases.put(id+"_effective", GAnd(GAliasReference(id+"_active"), nv_bool))
+						aliases.put(id+"_data", nv_data)
+          } else {
+						val nv_bool = GVariable(id+"_bool_var")
+						setType(nv_bool, BoolType)
+						val nv_data = GVariable(id+"_data_var")
+						setType(nv_data, StringType | IntType)
+						variables.put(nv_bool.id, nv_bool)
+						variables.put(nv_data.id, nv_data)
+						aliases.put(id+"_effective", GAnd(GAliasReference(id+"_active"), nv_bool))
+						aliases.put(id+"_data", nv_data)
 				  }
 				case Node(id,_,_,_,BoolDataFlavor,_,Some(cl),_,_,_,_,_) =>
 					// TODO: What if cl is enumeration?
@@ -364,20 +393,20 @@ object Main {
 					aliases.put(id+"_effective", GAliasReference(id+"_active") & GBoolFunc(newCl))
 					aliases.put(id+"_data", newCl)
 				case Node(id,_,_,_,DataFlavor,_,None,_,_,_,_,_) =>
-                                      if (isEnumeration(node)) {
-                                        val nv_data = GVariable(id+"_scalar_var")
-                                                                            //setType(nv_data, EnumType)
-                                        nv_data.setEnums(enums.get(id).getOrElse(null))
-                                        variables.put(nv_data.id, nv_data)
-                                        aliases.put(id+"_effective", GAliasReference(id+"_active"))
-                                        aliases.put(id+"_data", nv_data)
-                                      } else {
-                                        val nv_data = GVariable(id+"_data_var")
-                                        setType(nv_data, StringType | IntType)
-                                        variables.put(nv_data.id, nv_data)
-                                        aliases.put(id+"_effective", GAliasReference(id+"_active"))
-                                        aliases.put(id+"_data", nv_data)
-                                      }
+          if (isEnumeration(node)) {
+            val nv_data = GVariable(id+"_scalar_var")
+						//setType(nv_data, EnumType)
+            nv_data.setEnums(enums.get(id).getOrElse(null))
+            variables.put(nv_data.id, nv_data)
+            aliases.put(id+"_effective", GAliasReference(id+"_active"))
+            aliases.put(id+"_data", nv_data)
+          } else {
+            val nv_data = GVariable(id+"_data_var")
+            setType(nv_data, StringType | IntType)
+            variables.put(nv_data.id, nv_data)
+            aliases.put(id+"_effective", GAliasReference(id+"_active"))
+            aliases.put(id+"_data", nv_data)
+          }
 				case Node(id,_,_,_,DataFlavor,_,Some(cl),_,_,_,_,_) =>
 					// TODO: What if cl is enumeration?
 					val newCl = CDL2GExpression(cl)
@@ -687,8 +716,18 @@ object Main {
 //		deadFeatureNames = mutable.Set() ++ deadFeatureNames.map(_.replaceAll("_active", ""))
 		
 		output("total errors:" + errors.size + "\n")
+
+		var activeConstraints = mutable.Map[String, GExpression]()
+		activeConstraints = mutable.Map() ++ aliases.mapValues(GExpressionHelper.simplify(_))
+		activeConstraints = mutable.Map() ++ activeConstraints.mapValues(GExpressionHelper.removeGLiteral(_))
+		activeConstraints = mutable.Map() ++ activeConstraints.filter(keyValue => keyValue._1.contains("_active"))
+
+		var effectiveConstraints = mutable.Map[String, GExpression]()
+		effectiveConstraints = mutable.Map() ++ aliases.mapValues(GExpressionHelper.simplify(_))
+		effectiveConstraints = mutable.Map() ++ effectiveConstraints.mapValues(GExpressionHelper.removeGLiteral(_))
+		effectiveConstraints = mutable.Map() ++ effectiveConstraints.filter(keyValue => keyValue._1.contains("_effective"))
 		
-		(variables, constraints, errors.toList)
+		(variables, constraints, activeConstraints, effectiveConstraints, errors.toList)
 	}
 	
 	// def analyzeFixes(vars, constraints) {
