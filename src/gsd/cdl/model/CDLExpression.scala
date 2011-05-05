@@ -30,11 +30,11 @@ case class MinMaxRange(low: CDLExpression, high: CDLExpression) extends Range
 case class SingleValueRange( v : CDLExpression ) extends Range
 
 sealed abstract class CDLExpression{
-  def & (other : CDLExpression) : CDLExpression = other match{
+  def & (other : CDLExpression) : CDLExpression = other match {
     case True() => this
     case _ => And(this, other)
   }
-  def | (other : CDLExpression) : CDLExpression = other match{
+  def | (other : CDLExpression) : CDLExpression = other match {
     case False() => this
     case _ => Or(this, other)
   }

@@ -16,12 +16,12 @@ object Run {
     println("main being executed...")
 
     println("parsing the file...")
-		val file = "/home/marko/tmp/gsd-papers/2011-unknown-attributted-FMs/examples/clafer/extracted_representative_model-cleaned.iml"
-		val nodes = EcosIML.parseFile(file)
-		//val nodes = EcosIML.parseFile("/home/marko/NetBeansProjects/CDLAnalysis/pc_vmWare-claferPart.iml")
-		
-    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = Main.convertToGeneralModelFull(nodes)
-//								constraints.foreach(println)
+		val file = 
+//    "/home/marko/NetBeansProjects/ece725-project/input/iml/aaed2000.modified.iml"
+    "/home/marko/workspaces/idea/variability/variability/CDLTools/input/iml/pc_vmWare.iml"
+    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = 
+      Main.convertToGeneralModelFull(EcosIML.parseFile(file))
+//    errors.foreach(println)
 
     //activeConstraints.foreach(keyValue => {println ("" + keyValue._1 + ":" + keyValue._2 )})
     //effectiveConstraints.foreach(keyValue => {println ("" + keyValue._1 + ":" + keyValue._2 )})

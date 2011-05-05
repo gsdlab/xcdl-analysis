@@ -681,7 +681,6 @@ object Main {
 		output("replacing alias...")
 		aliases = mutable.Map() ++ aliases.mapValues(replace(_, Set()))
 		constraints = constraints.map(replace(_, Set())) 		
-		output("total errors:" + errors.size + "\n")
 
 		// Remove conditional
 		IF[CompilationOptions.REMOVE_CONDITIONAL#v] {
