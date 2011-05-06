@@ -45,44 +45,44 @@ object CompilationOptions {
 
 object Main {
 
-	class CycleError(involvedIds:Set[String]) extends Error {
-		override def toString = ("Cycle detected. Ids involved:" + involvedIds)
-	}
+  class CycleError(involvedIds:Set[String]) extends Error {
+          override def toString = ("Cycle detected. Ids involved:" + involvedIds)
+  }
 
-	class NonExistingIdsError(id:String) extends Error {
-		override def toString = "Refer to non-existing id:" + id
-	}
-	
-	/**
-	* Represents a constraint that will be simplified to false. 
-	* In actual model, this means that 
-	* a configuration cannot be exported because this constraint will never be satisfied
-	*/
-	case class UnsatisfiableConstraintError(exp:GExpression) extends Error {
-		override def toString = "Expression causing the model to be unsat: " + exp.toString
-	}
+  class NonExistingIdsError(id:String) extends Error {
+          override def toString = "Refer to non-existing id:" + id
+  }
 
-	/**
-	* Represents a "dead feature" - a feature that will never be active.
-	*/
-	case class DeadFeatureError(id:String) extends Error {
-		override def toString = id + " is a dead feature"
-	}
+  /**
+  * Represents a constraint that will be simplified to false.
+  * In actual model, this means that
+  * a configuration cannot be exported because this constraint will never be satisfied
+  */
+  case class UnsatisfiableConstraintError(exp:GExpression) extends Error {
+          override def toString = "Expression causing the model to be unsat: " + exp.toString
+  }
 
-	case class DuplicatedIDs(id:String) extends Error {
-		override def toString = "Duplicated id: " + id
-	}
+  /**
+  * Represents a "dead feature" - a feature that will never be active.
+  */
+  case class DeadFeatureError(id:String) extends Error {
+          override def toString = id + " is a dead feature"
+  }
 
-	def parseFile(file:String):(Map[String, GVariable], List[GExpression], List[Error]) = convertToGeneralModel(EcosIML.parseFile(file))
-	
-	def main(args:Array[String]) {
-		import java.io._
+  case class DuplicatedIDs(id:String) extends Error {
+          override def toString = "Duplicated id: " + id
+  }
+
+  def parseFile(file:String):(Map[String, GVariable], List[GExpression], List[Error]) = convertToGeneralModel(EcosIML.parseFile(file))
+
+  def main(args:Array[String]) {
+          import java.io._
 
     println("main being executed...")
 
     println("parsing the file...")
     val nodes = EcosIML.parseFile(args(0))
-    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = convertToGeneralModelFull(nodes)
+    val (vars, constraints, errors) = convertToGeneralModel(nodes)
     val out = new java.io.FileWriter("result.log")
     out.write("*******Vars*****\n")
     vars.foreach(pair => out.write(pair._1 + ":" + TypeGraph.getType(pair._2) + "\n"))
@@ -97,89 +97,59 @@ object Main {
     serialization.writeObject(constraints)
     serialization.close
 	}
+ /**
+   * Node is enumeration if
+   * It's legal values are only list of strings
+   */
+  def isEnumeration(node: Node): Boolean = {
+    if (node.legalValues != None) {
+      val Some(LegalValuesOption(ranges)) = node.legalValues
+      (ranges.collect{case range: SingleValueRange => range}.
+       filter(isCandidateForEnum).size == ranges.size)
+    } else
+      false
+  }
 
-  def depth( id : String, childParentMap : Map[String,String] ): Int =
-    childParentMap.get( id ) match {
-      case Some(n) => depth( n, childParentMap ) + 1
-      case None => 0
-    }
+  /**
+   * A SingleValueRange is a candidate for enum if
+   * it is not an integer vlaue, i.e. Only Strings are enums
+   */
+  def isCandidateForEnum(expr:SingleValueRange) : Boolean = {
+          expr.v match {
+              case StringLiteral(v) =>
+                      val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
+                      numberPattern.unapplySeq(v) match {
+                              case Some(List(numberPart)) => false
+                              case None => {
+                                    true
+                               }
+                    }
+              case _ => false
 
-  def outputHistogram( model : CDLModel, values : List[Int], file : String ){
-		val pw = new PrintWriter( new File( file ) )
-		aggregateValuesForGnuplot( values, 1 ).
-            foreach( x => pw.println( x._1 + "," + x._2 ) )
-		pw.close();
-	}
+          }
+  }
 
-  def aggregateValuesForGnuplot( values : List[Int], raster : Int ) = {
-    val ret = mutable.Map[Int, Int]()
-    for(f <- values ){
-      val newValue:Int = ( ( f / raster ) * raster ) + raster/2;
-      ret.get( newValue ) match{
-        case None => ret + (newValue -> 1)
-        case Some(v) => ret + ( newValue -> ( v + 1 ) )
-      }
-    }
-		Map[Int,Int]() ++ ret
-	}
-        /**
-         * Node is enumeration if
-         * It's legal values are only list of strings
-         */
-        def isEnumeration(node: Node): Boolean = {
-          if (node.legalValues != None) {
-            val Some(LegalValuesOption(ranges)) = node.legalValues
-            (ranges.collect{case range: SingleValueRange => range}.
-             filter(isCandidateForEnum).size == ranges.size)
-          } else
-            false
-        }
+  def reverse[K,V](m:Iterable[(K,V)]):Map[V,List[K]] = {
+          val result = mutable.Map[V, List[K]]()
+          for((k,v) <- m) {
+                  result.get(v) match {
+                          case Some(collection) => result.put(v, k::collection)
+                          case None => result.put(v, List(k))
+                  }
+          }
+          result.toMap
+  }
 
-        /**
-         * A SingleValueRange is a candidate for enum if
-         * it is not an integer vlaue, i.e. Only Strings are enums
-         */
-        def isCandidateForEnum(expr:SingleValueRange) : Boolean = {
-                expr.v match {
-                    case StringLiteral(v) =>
-                            val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
-                            numberPattern.unapplySeq(v) match {
-                                    case Some(List(numberPart)) => false
-                                    case None => {
-                                          true
-                                     }
-                          }
-                    case _ => false
-
-                }
-        }
-	
-	def reverse[K,V](m:Iterable[(K,V)]):Map[V,List[K]] = {
-		val result = mutable.Map[V, List[K]]()
-		for((k,v) <- m) {
-			result.get(v) match {
-				case Some(collection) => result.put(v, k::collection)
-				case None => result.put(v, List(k))
-			}
-		}
-		result.toMap
-	}
-	
-	def reverseBack[K,V](m:Iterable[(V, Iterable[K]) ]):Map[K,V] = {
-		val result = for((v, list) <- m; k <- list ) yield (k, v)
-		return result.toMap
-	}
+  def reverseBack[K,V](m:Iterable[(V, Iterable[K]) ]):Map[K,V] = {
+          val result = for((v, list) <- m; k <- list ) yield (k, v)
+          return result.toMap
+  }
 
   def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
-    val (vars, constraints, activeConstraints, effectiveConstraints, errors) = convertToGeneralModelFull(nodes)
-    (vars, constraints, errors)
-  }
-	
-	
-	def convertToGeneralModelFull(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], Map[String, GExpression], Map[String, GExpression], List[Error]) = {
-		var aliases = mutable.Map[String, GExpression]()
-		val variables = mutable.Map[String, GVariable]()
-		val errors = mutable.ListBuffer[Error]()
+
+    var aliases = mutable.Map[String, GExpression]()
+    val variables = mutable.Map[String, GVariable]()
+    val errors = mutable.ListBuffer[Error]()
 
     val enumVariables = mutable.HashSet[String]()
     /**
@@ -716,17 +686,8 @@ object Main {
 		
 		output("total errors:" + errors.size + "\n")
 
-		var activeConstraints = mutable.Map[String, GExpression]()
-		activeConstraints = mutable.Map() ++ aliases.mapValues(GExpressionHelper.simplify(_))
-		activeConstraints = mutable.Map() ++ activeConstraints.mapValues(GExpressionHelper.removeGLiteral(_))
-		activeConstraints = mutable.Map() ++ activeConstraints.filter(keyValue => keyValue._1.contains("_active"))
-
-		var effectiveConstraints = mutable.Map[String, GExpression]()
-		effectiveConstraints = mutable.Map() ++ aliases.mapValues(GExpressionHelper.simplify(_))
-		effectiveConstraints = mutable.Map() ++ effectiveConstraints.mapValues(GExpressionHelper.removeGLiteral(_))
-		effectiveConstraints = mutable.Map() ++ effectiveConstraints.filter(keyValue => keyValue._1.contains("_effective"))
-		
-		(variables, constraints, activeConstraints, effectiveConstraints, errors.toList)
+	
+		(variables, constraints, errors.toList)
 	}
 	
 	// def analyzeFixes(vars, constraints) {
