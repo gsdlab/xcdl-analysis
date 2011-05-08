@@ -63,19 +63,11 @@ case class StringLiteral(value : String) extends CDLExpression {
 //  override def toString = value
 //  override def toString = "\"" + value + "\""
 }
-case class IntLiteral(value : Int) extends CDLExpression {
+case class LongIntLiteral(value : Long) extends CDLExpression {
 //  override def toString = "" + value
 }
 case class Identifier(id : String) extends CDLExpression {
   override def toString = id
-}
-
-case class LoadedIdentifier( id: String, cdlType:CDLType, flavor:Flavor ) extends CDLExpression {
-  override def toString = id + "[l]"
-}
-
-case class UnloadedIdentifier( id : String ) extends CDLExpression{
-  override def toString = id + "[u]"
 }
 
 case class Conditional(cond : CDLExpression,
@@ -118,6 +110,17 @@ case class Minus(left :CDLExpression, right : CDLExpression)
         extends BinaryExpression(left, right, "-")
 case class Dot(left : CDLExpression, right : CDLExpression)
         extends BinaryExpression(left, right, ".")
+
+case class BtAnd(left : CDLExpression, right : CDLExpression)
+        extends BinaryExpression(left, right, "&")
+case class BtOr(left : CDLExpression, right : CDLExpression)
+        extends BinaryExpression(left, right, "|")
+case class BtXor(left : CDLExpression, right : CDLExpression)
+        extends BinaryExpression(left, right, "^")
+case class BtLeft(left : CDLExpression, right : CDLExpression)
+        extends BinaryExpression(left, right, "<<")
+case class BtRight(left : CDLExpression, right : CDLExpression)
+        extends BinaryExpression(left, right, ">>")
 
 case class Times(left :CDLExpression, right : CDLExpression)
         extends BinaryExpression(left, right, "*")

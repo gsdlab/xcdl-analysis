@@ -55,7 +55,7 @@ class IdentitySet[T <: AnyRef] {
 object GExpressionHelper {
 	var literal_counter = 0
 	implicit def createVarRef(id:String) = GVariable(id)
-	implicit def createIntLiteral(v:Int) = GIntLiteral(v)
+	implicit def createIntLiteral(v:Int) = GLongIntLiteral(v)
 	
 	import org.kiama.rewriting.Rewriter._
 	import GRewriter._
@@ -77,23 +77,23 @@ object GExpressionHelper {
 		case GConditional(GBoolValue(false), pass, fail) => fail
 		case GNot(GBoolValue(true)) => GBoolLiteral(false)
 		case GNot(GBoolValue(false)) => GBoolLiteral(true)
-		case GPlus(GIntValue(0), e) => e
-		case GPlus(e, GIntValue(0)) => e
+		case GPlus(GLongIntValue(0), e) => e
+		case GPlus(e, GLongIntValue(0)) => e
 		case GConditional(GBoolFunc(e1), e2, GBoolValue(false)) if e1 == e2 => e1
 		case GConditional(e1, e2, GBoolValue(false)) if e1 == e2 => e1
-		case GGreaterThan(GIntValue(i1), GIntValue(i2)) => 
+		case GGreaterThan(GLongIntValue(i1), GLongIntValue(i2)) => 
 			if (i1 > i2) return GBoolLiteral(true) 
 			else return GBoolLiteral(false)
-		case GGreaterEqThan(GIntValue(i1), GIntValue(i2)) => 
+		case GGreaterEqThan(GLongIntValue(i1), GLongIntValue(i2)) => 
 			if (i1 >= i2) return GBoolLiteral(true) 
 			else return GBoolLiteral(false)
-		case GLessThan(GIntValue(i1), GIntValue(i2)) => 
+		case GLessThan(GLongIntValue(i1), GLongIntValue(i2)) => 
 			if (i1 < i2) return GBoolLiteral(true) 
 			else return GBoolLiteral(false)
-		case GLessEqThan(GIntValue(i1), GIntValue(i2)) => 
+		case GLessEqThan(GLongIntValue(i1), GLongIntValue(i2)) => 
 			if (i1 <= i2) return GBoolLiteral(true) 
 			else return GBoolLiteral(false)
-		case GEq(GIntValue(i1), GIntValue(i2)) => 
+		case GEq(GLongIntValue(i1), GLongIntValue(i2)) => 
 			if (i1 == i2) return GBoolLiteral(true) 
 			else return GBoolLiteral(false)
 		case GSubString(GStringValue(whole), GStringValue(part)) =>
@@ -103,7 +103,7 @@ object GExpressionHelper {
 	}
 	private def removeGLiteralSingle(t:Any):Any = t match {
 		case l@GLiteral(v) if l.getType >= BoolType => GBoolLiteral(v > 0)
-		case l@GLiteral(v) if l.getType >= IntType => GIntLiteral(v)
+		case l@GLiteral(v) if l.getType >= IntType => GLongIntLiteral(v)
 		case l@GLiteral(v) if l.getType >= StringType => GStringLiteral(v.toString)
 		case x@_ => x
 	}
@@ -305,15 +305,15 @@ object GBoolValue {
 		case GBoolLiteral(t) => Some(t)
 		case GLiteral(0) => Some(false)
 		case GLiteral(1) => Some(true)
-		case GBoolFunc(GIntValue(0)) => Some(false)
-		case GBoolFunc(GIntValue(1)) => Some(true)
+		case GBoolFunc(GLongIntValue(0)) => Some(false)
+		case GBoolFunc(GLongIntValue(1)) => Some(true)
 		case _ => None
 	}
 }
 
-object GIntValue {
-	def unapply(expr:GExpression):Option[Int] = expr match {
-		case GIntLiteral(t) => Some(t)
+object GLongIntValue {
+	def unapply(expr:GExpression):Option[Long] = expr match {
+		case GLongIntLiteral(t) => Some(t)
 		case GLiteral(t) => Some(t)
 		case _ => None
 	}
@@ -331,7 +331,7 @@ object GStringValue {
 /**
  * A literal can be of any types
  **/
-case class GLiteral(value:Int/*, id:Int*/) extends GExpression with TypeStored {
+case class GLiteral(value:Long/*, id:Int*/) extends GExpression with TypeStored {
 	def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (oldType, List())
 	override def toString = value.toString
 	// def this(value:Int) = this(value, {GExpressionHelper.literal_counter+=1;GExpressionHelper.literal_counter})
@@ -341,8 +341,8 @@ case class GLiteral(value:Int/*, id:Int*/) extends GExpression with TypeStored {
 case class GStringLiteral(value:String) extends GStaticTypedAtomicExpression(StringType) {
 	override def toString = "\"" + value + "\""
 }
-case class GIntLiteral(value:Int) extends GStaticTypedAtomicExpression(IntType) {
-	override def toString = value.toString + ":Int"
+case class GLongIntLiteral(value:Long) extends GStaticTypedAtomicExpression(IntType) {
+	override def toString = value.toString + ":LongInt"
 }
 case class GBoolLiteral(value:Boolean) extends GStaticTypedAtomicExpression(BoolType) {
 	override def toString = if (value) "true" else "false"
