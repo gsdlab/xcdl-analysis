@@ -164,6 +164,8 @@ object ImlExpressionToCDLExpression {
   }
 }
 
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 object ImlFeatureToNode {
   def apply(f:Feature) : Node = {
     val id = f.getName
@@ -219,6 +221,8 @@ object ImlFeatureToNode {
   }
 }
 
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 object ImlFeatureTypeToCDLType {
   def apply(t:FeatureType) : CDLType = {
     if (t.isInstanceOf[ComponentFeatureType])
@@ -234,6 +238,8 @@ object ImlFeatureTypeToCDLType {
   }
 }
 
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 object ImlFlavorToCDLFlavor {
   def apply(f:gsd.iml.ast.flavor.Flavor) : gsd.cdl.model.Flavor = {
     if (f.isInstanceOf[gsd.iml.ast.flavor.NoneFlavor])
@@ -248,6 +254,8 @@ object ImlFlavorToCDLFlavor {
     return gsd.cdl.model.BoolDataFlavor ;
   }
 }
+
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 object ImlLegalValuesConstraintToCDLValuesOption {
   def apply(legalValues : LegalValuesConstraint) : LegalValuesOption =  {
@@ -265,6 +273,8 @@ object ImlLegalValuesConstraintToCDLValuesOption {
   }
 }
 
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 object ImlIntervalExpressionToMinMaxRange {
   def apply(e: IntervalExpression) : Range = {
       val interval = e.asInstanceOf[IntervalExpression] ;
@@ -272,6 +282,8 @@ object ImlIntervalExpressionToMinMaxRange {
                              ImlExpressionToCDLExpression(interval.getTo()))
   }
 }
+
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 object ImlConstraintsToCDLExpressions {
   def apply(constraints:java.util.List[_ <: UnaryImlConstraint]) : List[CDLExpression] = {
@@ -285,6 +297,8 @@ object ImlConstraintsToCDLExpressions {
     return res
   }
 }
+
+/* . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 object ImlFeatureListToImlNodeList {
   def apply(features:java.util.List[Feature]) : List[Node] = {
