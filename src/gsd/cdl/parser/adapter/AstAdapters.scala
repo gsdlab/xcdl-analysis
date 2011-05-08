@@ -147,7 +147,7 @@ object ImlExpressionToCDLExpression {
 
     if (e.isInstanceOf[IdentifierExpression]) {
       val exp = e.asInstanceOf[IdentifierExpression]
-      return new Identifier(exp.get())
+      return new Identifier(exp.getId)
     }
 
     if (e.isInstanceOf[LongLiteralExpression]) {
@@ -168,7 +168,7 @@ object ImlExpressionToCDLExpression {
 
 object ImlFeatureToNode {
   def apply(f:Feature) : Node = {
-    val id = f.getName
+    val id = f.getId
 
     val cdlType = ImlFeatureTypeToCDLType(f.getType())
 
