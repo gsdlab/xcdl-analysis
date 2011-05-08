@@ -39,10 +39,6 @@ class AstAdaptersTest extends JUnitSuite {
       convertedNodes = nodes.toList
     }
 
-    @After
-    def tearDown: Unit = {
-    }
-
     @Test
     def translateTest() = {
      assertEquals(originalFeatures.size, convertedNodes.size)
