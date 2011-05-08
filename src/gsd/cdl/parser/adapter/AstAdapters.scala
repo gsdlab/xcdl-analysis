@@ -166,10 +166,56 @@ object ImlExpressionToCDLExpression {
 
 object ImlFeatureToNode {
   def apply(f:Feature) : Node = {
-    /* TODO */
+    val id = f.getName
 
+    val cdlType = ImlFeatureTypeToCDLType(f.getType())
 
-    return null
+    val display = f.getDisplay()
+
+    var description : Option[String] = null
+    if (f.getDescription == null)
+      description = Some(null)
+    else
+      description = Some(f.getDescription)
+
+    val flavor = ImlFlavorToCDLFlavor(f.getFlavor())
+
+    var defaultValue : Option[CDLExpression] = null
+    if (f.getDefaultValue() == null)
+      defaultValue = Some(null)
+    else
+      defaultValue = Some(ImlExpressionToCDLExpression(f.getDefaultValue().getExpression()))
+
+    var calculated : Option[CDLExpression] = null
+    if (f.getCalculated() == null)
+      calculated = Some(null)
+    else
+     calculated = Some(ImlExpressionToCDLExpression(f.getCalculated().getExpression()))
+
+    var legalValues : Option[LegalValuesOption] = null
+    if (f.getLegalValues() == null)
+      legalValues = Some(null)
+    else
+      legalValues = Some(ImlLegalValuesConstraintToCDLValuesOption(f.getLegalValues()))
+
+    var reqs = ImlConstraintsToCDLExpressions(f.getRequires)
+    var activeIf = ImlConstraintsToCDLExpressions(f.getActiveIfs)
+    var impls = ImlConstraintsToCDLExpressions(f.getImpls)
+    var children = ImlFeatureListToImlNodeList(f.getSubfeatures)
+
+    return new Node(
+       id,
+       cdlType,
+       display,
+       description,
+       flavor,
+       defaultValue,
+       calculated,
+       legalValues,
+       reqs,
+       activeIf,
+       impls,
+       children)
   }
 }
 
@@ -227,13 +273,26 @@ object ImlIntervalExpressionToMinMaxRange {
   }
 }
 
-object ListOfImlExpressionToListOfCDLExpression  {
-  def apply(listExps: java.util.List[Expression]) : List[CDLExpression] = {
-    val res = List[CDLExpression]()
-    if (! gsd.iml.util.CollectionsUtils.isEmpty(listExps)) {
-      val iterator = listExps.iterator
+object ImlConstraintsToCDLExpressions {
+  def apply(constraints:java.util.List[_ <: UnaryImlConstraint]) : List[CDLExpression] = {
+    var res = List[CDLExpression]()
+    if (! gsd.iml.util.CollectionsUtils.isEmpty(constraints)) {
+      val iterator = constraints.iterator
       while(iterator.hasNext) {
-        res.+: (ImlExpressionToCDLExpression(iterator.next))
+        res.+:(ImlExpressionToCDLExpression(iterator.next.getExpression()))
+      }
+    }
+    return res
+  }
+}
+
+object ImlFeatureListToImlNodeList {
+  def apply(features:java.util.List[Feature]) : List[Node] = {
+    var res = List[Node]()
+    if (! gsd.iml.util.CollectionsUtils.isEmpty(features)) {
+      val iterator = features.iterator
+      while(iterator.hasNext) {
+        res.+:(ImlFeatureToNode(iterator.next))
       }
     }
     return res

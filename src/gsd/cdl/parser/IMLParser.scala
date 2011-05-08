@@ -25,7 +25,6 @@ import gsd.iml.parser.ImlParser
 object EcosIML {
 
   def parseFile(file : String) : List[Node] =  {
-    /* TODO */
-    return null
+    ImlFeatureListToImlNodeList(ImlParser.parse(file))
   }
 }
