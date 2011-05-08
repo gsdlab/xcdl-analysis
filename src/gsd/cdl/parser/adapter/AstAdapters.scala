@@ -176,7 +176,7 @@ object ImlFeatureToNode {
 
     var description : Option[String] = null
     if (f.getDescription == null)
-      description = Some(null)
+      description = None
     else
       description = Some(f.getDescription)
 
@@ -184,19 +184,19 @@ object ImlFeatureToNode {
 
     var defaultValue : Option[CDLExpression] = null
     if (f.getDefaultValue() == null)
-      defaultValue = Some(null)
+      defaultValue = None
     else
       defaultValue = Some(ImlExpressionToCDLExpression(f.getDefaultValue().getExpression()))
 
     var calculated : Option[CDLExpression] = null
     if (f.getCalculated() == null)
-      calculated = Some(null)
+      calculated = None
     else
      calculated = Some(ImlExpressionToCDLExpression(f.getCalculated().getExpression()))
 
     var legalValues : Option[LegalValuesOption] = null
     if (f.getLegalValues() == null)
-      legalValues = Some(null)
+      legalValues = None
     else
       legalValues = Some(ImlLegalValuesConstraintToCDLValuesOption(f.getLegalValues()))
 
