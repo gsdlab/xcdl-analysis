@@ -18,24 +18,25 @@ class AstAdaptersTest extends JUnitSuite {
   protected def SEP = System.getProperty("file.separator")
   protected def DIR = System.getProperty("user.dir") + SEP + "test" + SEP + "gsd" + SEP + "cdl" + SEP + "parser" + SEP + "adapter" + SEP
 
-  var features = scala.List[gsd.iml.ast.feature.Feature]()
-  var convertedNodes = scala.List[Node]()
+  var originalFeatures = scala.collection.immutable.List[gsd.iml.ast.feature.Feature]()
+  var convertedNodes = scala.collection.immutable.List[Node]()
 
   @Before
     def setUp: Unit = {
+      var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
+      var nodes = scala.collection.mutable.ListBuffer[Node]()
       val imlResult = ImlParser.parse(DIR + "sample.iml")
-      println("Size of parsed: " + imlResult.size)
       if (!gsd.iml.util.CollectionsUtils.isEmpty(imlResult)) {
         val iterator = imlResult.iterator
         while(iterator.hasNext) {
           val aNode = iterator.next
-          convertedNodes.+:(ImlFeatureToNode(aNode))
-          features.+:(aNode)
+          nodes += (ImlFeatureToNode(aNode))
+          features += (aNode)
         }
       }
 
-      println(features.size)
-      println(convertedNodes.size)
+      originalFeatures = features.toList
+      convertedNodes = nodes.toList
     }
 
     @After
@@ -43,8 +44,11 @@ class AstAdaptersTest extends JUnitSuite {
     }
 
     @Test
-    def translateSample0Test() = {
-     assertEquals(features.size, convertedNodes.size)
+    def translateTest() = {
+     assertEquals(originalFeatures.size, convertedNodes.size)
+     for (i <- 0 to originalFeatures.size - 1) {
+      assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
+     }
     }
     
     private def testFeatureToNode(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
