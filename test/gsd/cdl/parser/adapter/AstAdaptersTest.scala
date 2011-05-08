@@ -9,14 +9,12 @@ import org.junit._
 import org.junit.Assert._
 import org.scalatest.junit._
 import gsd.cdl.model._
-import gsd.iml.parser._;
-import gsd.iml.ast.feature.Feature;
+import gsd.iml.parser._
+import gsd.iml.ast.feature.Feature
 import java.util.List;
+import gsd.cdl.test.util.TestFile
 
 class AstAdaptersTest extends JUnitSuite {
-
-  protected def SEP = System.getProperty("file.separator")
-  protected def DIR = System.getProperty("user.dir") + SEP + "test" + SEP + "gsd" + SEP + "cdl" + SEP + "parser" + SEP + "adapter" + SEP
 
   var originalFeatures = scala.collection.immutable.List[gsd.iml.ast.feature.Feature]()
   var convertedNodes = scala.collection.immutable.List[Node]()
@@ -25,7 +23,7 @@ class AstAdaptersTest extends JUnitSuite {
     def setUp: Unit = {
       var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
       var nodes = scala.collection.mutable.ListBuffer[Node]()
-      val imlResult = ImlParser.parse(DIR + "sample.iml")
+      val imlResult = ImlParser.parse(TestFile.get("gsd/cdl/parser/adapter/sample.iml"))
       if (!gsd.iml.util.CollectionsUtils.isEmpty(imlResult)) {
         val iterator = imlResult.iterator
         while(iterator.hasNext) {
