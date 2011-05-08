@@ -1,0 +1,62 @@
+package SAMPLE_PACKAGE {
+  display "Sample package"
+  implements [CYGINT_HAL_DEBUG_GDB_STUBS]
+
+  component ENUMERATION {
+    display "Enumeration as Flavor Data"
+    legal_values  ["OPTION_1" "OPTION_2"]
+    default_value ["OPTION_1"]
+    flavor data
+
+    option ACIVE_IF_ENUMERATION {
+      display "This option is active if emuneration has certain value"
+      default_value [0x000F0000]
+      active_if [ENUMERATION == "OPTION_1"]
+      flavor data
+    }
+
+    option BOOL_DATA_OPTION {
+      display "Boolean data option"
+      default_value [0x000F0000]
+      active_if [ENUMERATION == "OPTION_1"]
+      requires [ACIVE_IF_ENUMERATION < 3]
+      flavor booldata
+    }
+
+    option BOOL_DATA_OPTION_1 {
+      display "Boolean data option"
+      default_value [0x000F0000]
+      active_if [ACIVE_IF_ENUMERATION]
+      flavor booldata
+    }
+  }
+
+  option CALCULATED_BOOLEAN {
+    display "Calculation that depends on enumeration"
+    calculated [ENUMERATION == "OPTION_2"]
+  }
+
+  option LEGAL_VALUE_IN_RANGE {
+    display "This option can have values in range 1 - 3"
+    legal_values [1 to 3]
+    default_value [CALCULATED_BOOLEAN ? 3 : 2]
+    flavor data
+  }
+
+  interface INTERFACE {
+    display "Interface to be implemented"
+  }
+
+  option OPTION_IMPLEMENTS_INTERFACE {
+    display "Implements certain interface"
+    default_value [1]
+    implements [INTERFACE]
+    flavor bool
+  }
+
+  component CALCULATED_DATA {
+    display "Calculated dataf"
+    calculated [ENUMERATION == "OPTION_1" ? "A" : (CALCULATED_BOOLEAN? "B" : "C")]
+    flavor data
+  }
+}
