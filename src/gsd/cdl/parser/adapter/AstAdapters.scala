@@ -147,7 +147,10 @@ object ImlExpressionToCDLExpression {
 
     if (e.isInstanceOf[IdentifierExpression]) {
       val exp = e.asInstanceOf[IdentifierExpression]
-      return new Identifier(exp.get())
+      /**
+       * @marko: changed to : getId()
+       */
+      return new Identifier(exp.getId())
     }
 
     if (e.isInstanceOf[LongLiteralExpression]) {
@@ -158,6 +161,13 @@ object ImlExpressionToCDLExpression {
     if (e.isInstanceOf[StringLiteralExpression]) {
       val exp = e.asInstanceOf[StringLiteralExpression]
       return new StringLiteral(exp.get())
+    }
+
+    if (e.isInstanceOf[ConditionalExpression]) {
+      val exp = e.asInstanceOf[ConditionalExpression]
+      return new Conditional(ImlExpressionToCDLExpression(exp.getCondition()),
+                             ImlExpressionToCDLExpression(exp.getPass()),
+                             ImlExpressionToCDLExpression(exp.getFail()))
     }
 
     throw new Exception("Unknown adapter for " + e.getClass().getName())
@@ -174,30 +184,28 @@ object ImlFeatureToNode {
 
     val display = f.getDisplay()
 
-    var description : Option[String] = null
-    if (f.getDescription == null)
-      description = Some(null)
-    else
+    /**
+     * @marko Changed var assignments to None instead of Some(null)
+     **/
+
+    // description : Option[String]
+    var description : Option[String] = None
+    if (f.getDescription != null)
       description = Some(f.getDescription)
 
     val flavor = ImlFlavorToCDLFlavor(f.getFlavor())
 
-    var defaultValue : Option[CDLExpression] = null
-    if (f.getDefaultValue() == null)
-      defaultValue = Some(null)
-    else
+    //defaultValue : Option[CDLExpression]
+    var defaultValue : Option[CDLExpression] = None
+    if (f.getDefaultValue() != null)
       defaultValue = Some(ImlExpressionToCDLExpression(f.getDefaultValue().getExpression()))
 
-    var calculated : Option[CDLExpression] = null
-    if (f.getCalculated() == null)
-      calculated = Some(null)
-    else
+    var calculated : Option[CDLExpression] = None
+    if (f.getCalculated() != null)
      calculated = Some(ImlExpressionToCDLExpression(f.getCalculated().getExpression()))
 
-    var legalValues : Option[LegalValuesOption] = null
-    if (f.getLegalValues() == null)
-      legalValues = Some(null)
-    else
+    var legalValues : Option[LegalValuesOption] = None
+    if (f.getLegalValues() != null)
       legalValues = Some(ImlLegalValuesConstraintToCDLValuesOption(f.getLegalValues()))
 
     var reqs = ImlConstraintsToCDLExpressions(f.getRequires)
