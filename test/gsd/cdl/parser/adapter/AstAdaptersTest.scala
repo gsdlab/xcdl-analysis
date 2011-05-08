@@ -48,12 +48,43 @@ class AstAdaptersTest extends JUnitSuite {
     }
     
     private def testFeatureToNode(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
-      if ((node.id.isInstanceOf[None] && feature.getId() != null) ||
-        (!node.id.isInstanceOf[None] && feature.getId() == null) ) {
+      if (!testFeatureToNodeId(node, feature)) {
+        false
+      } else if (!testFeatureToNodeDisplay(node, feature)) {
+        false
+      } else if (!testFeatureToNodeType(node, feature)) {
         false
       } else {
         true
       }
     }
+
+  private def testFeatureToNodeId(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
+      if ((node.id != null && feature.getId() != null)) {
+        // the value is the same
+        node.id == feature.getId()
+      } else if ((node.id == null && feature.getId() == null)) {
+        true
+      } else {
+        false
+      }
+  }
+
+  private def testFeatureToNodeDisplay(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
+      if ((node.display != null && feature.getDisplay() != null)) {
+        // the value is the same
+        node.display == feature.getDisplay()
+      } else if ((node.display == null && feature.getDisplay() == null)) {
+        true
+      } else {
+        false
+      }
+  }
+
+  private def testFeatureToNodeType(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
+    //node.cdlType ==
+    // mock
+    true
+  }
 
 }
