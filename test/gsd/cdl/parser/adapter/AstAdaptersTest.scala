@@ -48,7 +48,12 @@ class AstAdaptersTest extends JUnitSuite {
     }
     
     private def testFeatureToNode(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
-      true
+      if ((node.id.isInstanceOf[None] && feature.getId() != null) ||
+        (!node.id.isInstanceOf[None] && feature.getId() == null) ) {
+        false
+      } else {
+        true
+      }
     }
 
 }
