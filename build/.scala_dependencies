@@ -18,6 +18,7 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> ..\src\gsd\cdl\formula\Expression.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\Main.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\ExpressionRewrite.scala
+..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\parser\IMLParser.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\Expression.scala
 -------
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeGraph$$anonfun$dealWithEachType$1$2.class
@@ -94,8 +95,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpressionHelper$$anonfun$9$$anonfun$apply$11.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GOr$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpressionHelper$$anonfun$5$$anonfun$apply$7$$anonfun$apply$8.class
-..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpression$$anonfun$children$3.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBoolValue.class
+..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpression$$anonfun$children$3.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeStored$class.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBtLeft$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeHelper$.class
@@ -132,8 +133,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GPlus.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBoolFunc.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBtOr.class
-..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GStringLiteral$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GEnumLiteral$.class
+..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GStringLiteral$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GIsActiveFunc.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GSubString.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GVariable.class
