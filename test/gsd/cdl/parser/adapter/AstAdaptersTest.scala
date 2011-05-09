@@ -71,7 +71,7 @@ class AstAdaptersTest extends JUnitSuite {
         println("Failed legal")
         false
       } else if (!testRequires(node.reqs, feature.getRequires)) { // requires
-        println("Failed reqs")
+        println("Failed reqs: " + node.reqs)
         false
       } else if (!testActiveIfs(node.activeIfs, feature.getActiveIfs)) { // active ifs
         println("Failed active ifs")
@@ -240,9 +240,15 @@ class AstAdaptersTest extends JUnitSuite {
                   testCDLExpressionToParsedExpression(fail, expression.asInstanceOf[ConditionalExpression].getFail)
         }
         case Or(left, right) => {
-              expression.isInstanceOf[OrExpression] &&
-              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[OrExpression].getLeft) &&
-              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[OrExpression].getRight)
+              if (expression.isInstanceOf[ImpliesExpression]) {
+                left.isInstanceOf[Not] && 
+                testCDLExpressionToParsedExpression(left.asInstanceOf[Not].expr, expression.asInstanceOf[ImpliesExpression].getLeft) &&
+                testCDLExpressionToParsedExpression(right, expression.asInstanceOf[ImpliesExpression].getRight)
+              } else {
+                expression.isInstanceOf[OrExpression] &&
+                testCDLExpressionToParsedExpression(left, expression.asInstanceOf[OrExpression].getLeft) &&
+                testCDLExpressionToParsedExpression(right, expression.asInstanceOf[OrExpression].getRight)
+              }
             }
         case And(left, right) => {
               expression.isInstanceOf[AndExpression] &&
