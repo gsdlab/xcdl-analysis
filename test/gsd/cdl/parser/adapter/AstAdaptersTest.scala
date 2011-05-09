@@ -25,12 +25,13 @@ class AstAdaptersTest extends JUnitSuite {
     def setUp: Unit = {
       var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
       var nodes = scala.collection.mutable.ListBuffer[Node]()
-      val imlResult = ImlParser.parse(TestFile.get("gsd/cdl/parser/adapter/sample.iml"))
+      val imlResult = ImlParser.parse(TestFile.get("gsd/cdl/parser/adapter/adderII.iml"))
       if (!gsd.iml.util.CollectionsUtils.isEmpty(imlResult)) {
         val iterator = imlResult.iterator
         while(iterator.hasNext) {
           val aNode = iterator.next
-          nodes += (ImlFeatureToNode(aNode))
+          val translatedNode = ImlFeatureToNode(aNode)
+          nodes += (translatedNode)
           features += (aNode)
         }
       }
@@ -40,6 +41,37 @@ class AstAdaptersTest extends JUnitSuite {
     }
 
     @Test
+    def testAll() = {
+        for (file <- new java.io.File(TestFile.get("gsd/cdl/parser/adapter/iml/")).listFiles(new java.io.FilenameFilter() {
+            def accept(dir:java.io.File, name:String):Boolean = {
+                return name.endsWith(".iml") ;
+            }
+        })) {
+          var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
+          var nodes = scala.collection.mutable.ListBuffer[Node]()
+          val imlResult = ImlParser.parse(file)
+          if (!gsd.iml.util.CollectionsUtils.isEmpty(imlResult)) {
+            val iterator = imlResult.iterator
+            while(iterator.hasNext) {
+              val aNode = iterator.next
+              val translatedNode = ImlFeatureToNode(aNode)
+              nodes += (translatedNode)
+              features += (aNode)
+            }
+          }
+
+          originalFeatures = features.toList
+          convertedNodes = nodes.toList
+
+         assertEquals(originalFeatures.size, convertedNodes.size)
+         for (i <- 0 to originalFeatures.size - 1) {
+          assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
+         }
+
+        }
+    }
+
+//    @Test
     def translateTest() = {
      assertEquals(originalFeatures.size, convertedNodes.size)
      for (i <- 0 to originalFeatures.size - 1) {
@@ -48,6 +80,7 @@ class AstAdaptersTest extends JUnitSuite {
     }
     
     private def testFeatureToNode(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
+//      println("Comparing: " + node.id + ", and: " + feature.getId)
       if (!testFeatureToNodeId(node, feature)) { //id
         false
       } else if (!testFeatureToNodeDisplay(node, feature)) { //display
@@ -58,12 +91,134 @@ class AstAdaptersTest extends JUnitSuite {
         false
       } else if (!testFeatureToNodeFlavor(node, feature)) { // flavor
         false
-      } else if (!testCDLExpressionToConstraint(node.defaultValue, feature.getDefaultValue)) { // flavor
+      } else if (!testCDLExpressionToConstraint(node.defaultValue, feature.getDefaultValue)) { // default value
+        println("Failed default")
+        false
+      } else if (!testCDLExpressionToConstraint(node.calculated, feature.getCalculated)) { // calculated
+        println("Failed calculated")
+        false
+      } else if (!testLegalValuesOptionsToLegalValuesConstraint(node.legalValues, feature.getLegalValues)) { // legal values
+        println("Failed legal")
+        false
+      } else if (!testRequires(node.reqs, feature.getRequires)) { // requires
+        println("Failed reqs")
+        false
+      } else if (!testActiveIfs(node.activeIfs, feature.getActiveIfs)) { // active ifs
+        println("Failed active ifs")
+        false
+      } else if (!testImplements(node.implements, feature.getImpls)) { // implements
+        println("Failed implements")
+        false
+      } else if (!testChildNodes(node.children, feature.getSubfeatures)) { // implements
         false
       } else {
         true
       }
     }
+
+  private def testChildNodes(nodes: scala.List[Node], children:java.util.List[Feature]):Boolean = {
+    if (nodes.size != 0 && children != null) {
+      if (nodes.size == children.size) {
+        var pass = true
+        for (i <- 0 to nodes.size - 1) {
+          pass = pass && testFeatureToNode(nodes.apply(i), children.get(i))
+        }
+        pass
+      } else {
+        false
+      }
+    } else if (nodes.size == 0 && children == null) {
+      true
+    } else {
+      false
+    }
+  }
+
+  private def testLegalValuesOptionsToLegalValuesConstraint(legalValues:Option[LegalValuesOption], constraint:LegalValuesConstraint):Boolean = {
+    if (legalValues == None && constraint == null) {
+      true
+    } else {
+      if (legalValues == None && constraint != null && constraint.getExpressions().size == 0) {
+        true
+      } else {
+        if (legalValues != None) {
+          var pass = true
+          val values = legalValues.getOrElse(null)
+          for (i <- 0 to values.ranges.size - 1) {
+            if (legalValues.getOrElse(null).ranges.apply(i).isInstanceOf[MinMaxRange]) {
+                // println(constraint.getExpressions().get(i).getClass)
+                if (constraint.getExpressions().get(i).isInstanceOf[IntervalExpression]) {
+                  pass = pass && 
+                  testCDLExpressionToParsedExpression(
+                    legalValues.getOrElse(null).ranges.apply(i).asInstanceOf[MinMaxRange].low,
+                                                                     constraint.getExpressions().get(i).asInstanceOf[IntervalExpression].getFrom)
+
+                  pass = pass &&  testCDLExpressionToParsedExpression(legalValues.getOrElse(null).ranges.apply(i).asInstanceOf[MinMaxRange].high,
+                                                                     constraint.getExpressions().get(i).asInstanceOf[IntervalExpression].getTo)
+              } else {
+                  false
+                }
+            } else {
+                pass = pass &&
+                testCDLExpressionToParsedExpression(values.ranges.apply(i).asInstanceOf[SingleValueRange].v,
+                                                            constraint.getExpressions().get(i))
+            }
+          }
+          pass
+        } else {
+          false
+        }
+      }
+    }
+  }
+
+  private def convertToList[I <: O, O](input:java.util.List[I]): scala.List[O] = {
+    var list = scala.collection.mutable.ListBuffer[O]()
+    if (!gsd.iml.util.CollectionsUtils.isEmpty(input)) {
+      val iterator = input.iterator
+      while(iterator.hasNext) {
+        list += iterator.next
+      }
+      if (list.toList.size != input.size)
+        throw new Exception("Wrong conversion")
+    }
+    list.toList
+  }
+
+  private def testRequires(cdlExpressions:scala.List[CDLExpression], requiresConstraints:java.util.List[RequiresConstraint]):Boolean = {
+    testListOfCDLExpressionsToFeatureConstraint(cdlExpressions, convertToList[RequiresConstraint, UnaryImlConstraint](requiresConstraints))
+  }
+
+  private def testActiveIfs(cdlExpressions:scala.List[CDLExpression], activeIfs:java.util.List[ActiveIfConstraint]):Boolean = {
+    testListOfCDLExpressionsToFeatureConstraint(cdlExpressions, convertToList[ActiveIfConstraint, UnaryImlConstraint](activeIfs))
+  }
+
+  private def testImplements(cdlExpressions:scala.List[CDLExpression], implements:java.util.List[ImplementsConstraint]):Boolean = {
+    testListOfCDLExpressionsToFeatureConstraint(cdlExpressions, convertToList[ImplementsConstraint, UnaryImlConstraint](implements))
+  }
+
+  private def testListOfCDLExpressionsToFeatureConstraint(cdlExpressions:scala.List[CDLExpression], constraints:scala.List[UnaryImlConstraint]):Boolean = {
+    if (cdlExpressions != null && constraints != null) {
+      if (cdlExpressions.size == constraints.size) {
+          var pass = true
+          for (i <- 0 to cdlExpressions.size - 1) {
+            pass = pass && testCDLExpressionToConstraint(cdlExpressions.apply(i), constraints.apply(i))
+          }
+          pass
+      } else {
+//        println("Size doesn't match. Size of first argument: " + cdlExpressions.size + ", and of the second: " + constraints.size)
+        false
+      }
+    } else if (cdlExpressions == null && constraints == null) {
+      true
+    } else {
+      false
+    }
+  }
+
+  private def testCDLExpressionToConstraint(cdlExpression:CDLExpression, constraint:ImlConstraint):Boolean = {
+    testCDLExpressionToConstraint(Some[CDLExpression](cdlExpression), constraint)
+  }
 
   private def testCDLExpressionToConstraint(cdlExpression:Option[CDLExpression], constraint:ImlConstraint):Boolean = {
     if (cdlExpression == None && constraint == null) {
@@ -71,8 +226,16 @@ class AstAdaptersTest extends JUnitSuite {
     } else {
       if (constraint.isInstanceOf[DefaultValueConstraint]) {
         testCDLExpressionToParsedExpression(cdlExpression, constraint.asInstanceOf[DefaultValueConstraint].getExpression)
+      } else if (constraint.isInstanceOf[CalculatedConstraint]) {
+        testCDLExpressionToParsedExpression(cdlExpression, constraint.asInstanceOf[CalculatedConstraint].getExpression)
+      } else if (constraint.isInstanceOf[RequiresConstraint]) {
+        testCDLExpressionToParsedExpression(cdlExpression, constraint.asInstanceOf[RequiresConstraint].getExpression)
+      } else if (constraint.isInstanceOf[ActiveIfConstraint]) {
+        testCDLExpressionToParsedExpression(cdlExpression, constraint.asInstanceOf[ActiveIfConstraint].getExpression)
+      } else if (constraint.isInstanceOf[ImplementsConstraint]) {
+        testCDLExpressionToParsedExpression(cdlExpression, constraint.asInstanceOf[ImplementsConstraint].getExpression)
       } else {
-        false
+        throw new Exception ("Wrong constraint class: " + constraint.getClass)
       }
     }
   }
@@ -180,12 +343,43 @@ class AstAdaptersTest extends JUnitSuite {
             expression.isInstanceOf[NotExpression] &&
             testCDLExpressionToParsedExpression(e, expression.asInstanceOf[NotExpression].getExpression)
           }
-        case FunctionCall("is_substr", scala.List(whole, sub)) => {true}
-        case FunctionCall("bool", scala.List(e)) => {true}
-        case True() => {true}
-        case False() => {true}
-        case _ => throw new Exception("Unexpected expression: " + cdlExpression)
+        case FunctionCall("is_substr", scala.List(whole, sub)) => {
+            testCDLExpressionToParsedExpression(whole, expression.asInstanceOf[IsSubstringFunctionCallExpression].getFirstArgument) &&
+            testCDLExpressionToParsedExpression(sub, expression.asInstanceOf[IsSubstringFunctionCallExpression].getSecondArgument)
+          }
+        case FunctionCall("is_loaded", scala.List(exp)) => {
+            testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsLoadedFunctionCallExpression].getArgument)
+          }
+//        case FunctionCall("bool", scala.List(e)) => {true}
+        case True() => {
+            expression.asInstanceOf[BooleanLiteralExpression].get == java.lang.Boolean.TRUE
+          }
+        case False() => {
+            expression.asInstanceOf[BooleanLiteralExpression].get == java.lang.Boolean.FALSE
+          }
+        case Implies(left, right) => {
+              expression.isInstanceOf[ImpliesExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[ImpliesExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[ImpliesExpression].getRight)
+            }
+        case BtOr(left, right) => {
+              expression.isInstanceOf[BitwiseOrExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseOrExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseOrExpression].getRight)
+            }
+        case BtXor(left, right) => {
+              expression.isInstanceOf[BitwiseXorExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseXorExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseXorExpression].getRight)
+            }
+        case BtAnd(left, right) => {
+              expression.isInstanceOf[BitwiseAndExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseAndExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseAndExpression].getRight)
+            }
 
+        case _ => throw new Exception("Unsupported CDLExpression class for conversion: " + cdlExpression
+                                      + " with class" + cdlExpression.getClass)
         }
     } else {
       false
