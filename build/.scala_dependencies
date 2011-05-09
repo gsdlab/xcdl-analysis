@@ -7,20 +7,18 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\ConditionalCompilation.scala -> ..\src\gsd\cdl\formula\ConditionalCompilation.scala
 ..\src\gsd\cdl\model\CDLExpression.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\parser\adapter\AstAdapters.scala
-..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\model\IML.scala
-..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\model\IML.scala -> ..\src\gsd\cdl\model\IML.scala
 ..\src\gsd\cdl\model\IML.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\formula\Tests.scala -> ..\src\gsd\cdl\formula\Main.scala
 ..\src\gsd\cdl\formula\Tests.scala -> ..\src\gsd\cdl\formula\Tests.scala
 ..\src\gsd\cdl\parser\TypeFilterList.scala -> ..\src\gsd\cdl\parser\TypeFilterList.scala
 ..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\parser\adapter\AstAdapters.scala
-..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\model\IML.scala
 ..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\parser\IMLParser.scala
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> ..\src\gsd\cdl\formula\ExpressionRewrite.scala
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> ..\src\gsd\cdl\formula\Expression.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\Main.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\ExpressionRewrite.scala
+..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\parser\IMLParser.scala
 ..\src\gsd\cdl\formula\Main.scala -> ..\src\gsd\cdl\formula\Expression.scala
 -------
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeGraph$$anonfun$dealWithEachType$1$2.class
@@ -97,8 +95,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpressionHelper$$anonfun$9$$anonfun$apply$11.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GOr$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpressionHelper$$anonfun$5$$anonfun$apply$7$$anonfun$apply$8.class
-..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpression$$anonfun$children$3.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBoolValue.class
+..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GExpression$$anonfun$children$3.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeStored$class.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBtLeft$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\TypeHelper$.class
@@ -135,8 +133,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GPlus.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBoolFunc.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GBtOr.class
-..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GStringLiteral$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GEnumLiteral$.class
+..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GStringLiteral$.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GIsActiveFunc.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GSubString.class
 ..\src\gsd\cdl\formula\Expression.scala -> classes\gsd\cdl\formula\GVariable.class
@@ -199,9 +197,9 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\BtRight$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Conditional.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\UnaryExpression.class
-..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpressionConversions.class
-..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Times.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\LegalValuesOption$.class
+..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Times.class
+..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpressionConversions.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Conditional$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\LessThan$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpression.class
@@ -317,8 +315,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\parser\IMLParser.scala -> classes\gsd\cdl\parser\EcosIML$.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gsd$cdl$formula$GRewriter$$gallProduct$1.class
-..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1$$anonfun$apply$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1.class
+..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1$$anonfun$apply$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$geverywheretd$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anon$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gbottomup$1.class

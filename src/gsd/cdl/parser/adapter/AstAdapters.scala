@@ -61,11 +61,12 @@ object ImlExpressionToCDLExpression {
       val exp = e.asInstanceOf[FunctionCallExpression]
       val args = scala.collection.mutable.ListBuffer[CDLExpression]()
 
-      val iterator = exp.getArguments().iterator ;
+      val iterator = exp.getArguments().iterator
       while(iterator.hasNext) {
         args += ImlExpressionToCDLExpression(iterator.next)
       }
 
+/*
       if (exp.isInstanceOf[IsSubstringFunctionCallExpression]) {
         return new FunctionCall("is_substr", args.toList)
       }
@@ -73,10 +74,11 @@ object ImlExpressionToCDLExpression {
       if (exp.isInstanceOf[IsLoadedFunctionCallExpression]) { // is_loaded accepts only one elements
         return new FunctionCall("is_loaded", args.toList)
       }
-
 //      return new FunctionCall(exp.asInstanceOf[FunctionCall].name, args.toList)
       throw new Exception("Unexpected function call: " + exp.toString())
-   }
+*/
+      return new FunctionCall(exp.getFunctionName, args.toList)
+    }
 
     if (e.isInstanceOf[EqualExpression]) {
       val exp = e.asInstanceOf[EqualExpression]
@@ -170,6 +172,14 @@ object ImlExpressionToCDLExpression {
       return new StringLiteral(exp.get())
     }
 
+    if (e.isInstanceOf[BooleanLiteralExpression]) {
+      val exp = e.asInstanceOf[BooleanLiteralExpression]
+      if (exp.get.equals(java.lang.Boolean.TRUE))
+        return new True()
+
+      return new False()
+    }
+
     if (e.isInstanceOf[ConditionalExpression]) {
       val exp = e.asInstanceOf[ConditionalExpression]
       return new Conditional(ImlExpressionToCDLExpression(exp.getCondition()),
@@ -177,26 +187,27 @@ object ImlExpressionToCDLExpression {
                              ImlExpressionToCDLExpression(exp.getFail()))
     }
 
-    if (e.isInstanceOf[BooleanLiteralExpression]) {
-      val value = e.asInstanceOf[BooleanLiteralExpression].get
-      if (value.booleanValue()) {
-        return new True()
-      } else {
-        return new False()
-      }
-    }
-
+    
     if (e.isInstanceOf[ImpliesExpression]) {
       val exp = e.asInstanceOf[ImpliesExpression]
       return new Implies(ImlExpressionToCDLExpression(exp.getLeft()),
                       ImlExpressionToCDLExpression(exp.getRight()))
     }
+    
 
     //TODO: DEAL WITH DOUBLES
     if (e.isInstanceOf[DoubleLiteralExpression]) {
       val value: scala.Double = (0.0d + e.asInstanceOf[DoubleLiteralExpression].get.doubleValue)
       return new DoubleLiteral(value)
     }
+
+/*
+    if (e.isInstanceOf[ImpliesExpression]) {
+      val exp = e.asInstanceOf[ImpliesExpression]
+      return new Or(Not(ImlExpressionToCDLExpression(exp.getLeft())),
+                    ImlExpressionToCDLExpression(exp.getRight()))
+    }
+    */
 
     throw new Exception("Unknown adapter for " + e.getClass().getName())
   }

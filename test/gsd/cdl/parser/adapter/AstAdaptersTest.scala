@@ -47,6 +47,8 @@ class AstAdaptersTest extends JUnitSuite {
                 return name.endsWith(".iml") ;
             }
         })) {
+          println("Testing file: " + file)
+
           var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
           var nodes = scala.collection.mutable.ListBuffer[Node]()
           val imlResult = ImlParser.parse(file)
@@ -62,12 +64,10 @@ class AstAdaptersTest extends JUnitSuite {
 
           originalFeatures = features.toList
           convertedNodes = nodes.toList
-
-         assertEquals(originalFeatures.size, convertedNodes.size)
-         for (i <- 0 to originalFeatures.size - 1) {
-          assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
-         }
-
+          assertEquals(originalFeatures.size, convertedNodes.size)
+          for (i <- 0 to originalFeatures.size - 1) {
+            assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
+          }
         }
     }
 
@@ -349,6 +349,10 @@ class AstAdaptersTest extends JUnitSuite {
           }
         case FunctionCall("is_loaded", scala.List(exp)) => {
             testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsLoadedFunctionCallExpression].getArgument)
+          }
+        case FunctionCall("is_active", scala.List(exp)) => {
+            expression.isInstanceOf[IsActiveFunctionCallExpression] &&
+            testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsActiveFunctionCallExpression].getArgument)
           }
 //        case FunctionCall("bool", scala.List(e)) => {true}
         case True() => {
