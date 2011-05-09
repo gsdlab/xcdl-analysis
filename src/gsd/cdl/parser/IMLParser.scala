@@ -27,9 +27,6 @@ object EcosIML {
 
   def parseFile(file : String) : List[Node] =  {
     val original = ImlParser.parse(file)
-    println("original size " + original.size)
     return ImlFeatureListToImlNodeList(original)
   }
-
-  def main(args:Array[String]) : Unit = parseFile("C:/Users/leonardo/Documents/NetBeansProjects/xcdl-analysis-dev_1.1/test/gsd/cdl/formula/showcase")
 }
