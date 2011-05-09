@@ -19,7 +19,7 @@
  */
 package gsd.cdl.model
 
-case class Node(id : String,
+case class Node(id : String, 
                 cdlType : CDLType,
                 display : String,
                 description : Option[String],

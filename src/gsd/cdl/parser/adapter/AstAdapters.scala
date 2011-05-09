@@ -66,7 +66,16 @@ object ImlExpressionToCDLExpression {
         args += ImlExpressionToCDLExpression(iterator.next)
       }
 
-      return new FunctionCall(exp.getName(), args.toList)
+      if (exp.isInstanceOf[IsSubstringFunctionCallExpression]) {
+        return new FunctionCall("is_substr", args.toList)
+      }
+
+      if (exp.isInstanceOf[IsLoadedFunctionCallExpression]) { // is_loaded accepts only one elements
+        return new FunctionCall("is_loaded", args.toList)
+      }
+
+//      return new FunctionCall(exp.asInstanceOf[FunctionCall].name, args.toList)
+      throw new Exception("Unexpected function call: " + exp.toString())
    }
 
     if (e.isInstanceOf[EqualExpression]) {
@@ -168,6 +177,27 @@ object ImlExpressionToCDLExpression {
                              ImlExpressionToCDLExpression(exp.getFail()))
     }
 
+    if (e.isInstanceOf[BooleanLiteralExpression]) {
+      val value = e.asInstanceOf[BooleanLiteralExpression].get
+      if (value.booleanValue()) {
+        return new True()
+      } else {
+        return new False()
+      }
+    }
+
+    if (e.isInstanceOf[ImpliesExpression]) {
+      val exp = e.asInstanceOf[ImpliesExpression]
+      return new Implies(ImlExpressionToCDLExpression(exp.getLeft()),
+                      ImlExpressionToCDLExpression(exp.getRight()))
+    }
+
+    //TODO: DEAL WITH DOUBLES
+    if (e.isInstanceOf[DoubleLiteralExpression]) {
+      val value: scala.Double = (0.0d + e.asInstanceOf[DoubleLiteralExpression].get.doubleValue)
+      return new DoubleLiteral(value)
+    }
+
     throw new Exception("Unknown adapter for " + e.getClass().getName())
   }
 }
@@ -176,6 +206,7 @@ object ImlExpressionToCDLExpression {
 
 object ImlFeatureToNode {
   def apply(f:Feature) : Node = {
+
     val id = f.getId
 
     val cdlType = ImlFeatureTypeToCDLType(f.getType())

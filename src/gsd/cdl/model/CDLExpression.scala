@@ -64,8 +64,13 @@ case class StringLiteral(value : String) extends CDLExpression {
 //  override def toString = "\"" + value + "\""
 }
 case class LongIntLiteral(value : Long) extends CDLExpression {
-//  override def toString = "" + value
+  override def toString = "" + value
 }
+
+case class DoubleLiteral(value : Double) extends CDLExpression {
+  override def toString = "" + value
+}
+
 case class Identifier(id : String) extends CDLExpression {
   override def toString = id
 }
