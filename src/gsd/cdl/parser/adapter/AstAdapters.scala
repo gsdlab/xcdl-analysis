@@ -3,12 +3,13 @@
  * and open the template in the editor.
  */
 
-package gsd.cdl.model
+package gsd.cdl.parser.adapter
 
 import gsd.iml.ast.expression._
 import gsd.cdl.formula._
 import gsd.iml.ast.feature._
 import gsd.iml.ast.constraint._
+import gsd.cdl.model._
 
 object ImlExpressionToCDLExpression {
 
@@ -58,14 +59,14 @@ object ImlExpressionToCDLExpression {
 
     if (e.isInstanceOf[FunctionCallExpression]) {
       val exp = e.asInstanceOf[FunctionCallExpression]
-      val args = List[CDLExpression]()
+      val args = scala.collection.mutable.ListBuffer[CDLExpression]()
 
       val iterator = exp.getArguments().iterator ;
       while(iterator.hasNext) {
-        args.+:(iterator.next)
+        args += ImlExpressionToCDLExpression(iterator.next)
       }
 
-      return new FunctionCall(exp.getName(), args)
+      return new FunctionCall(exp.getName(), args.toList)
    }
 
     if (e.isInstanceOf[EqualExpression]) {
@@ -181,18 +182,12 @@ object ImlFeatureToNode {
 
     val display = f.getDisplay()
 
-    /**
-     * @marko Changed var assignments to None instead of Some(null)
-     **/
-
-    // description : Option[String]
     var description : Option[String] = None
     if (f.getDescription != null)
       description = Some(f.getDescription)
 
     val flavor = ImlFlavorToCDLFlavor(f.getFlavor())
 
-    //defaultValue : Option[CDLExpression]
     var defaultValue : Option[CDLExpression] = None
     if (f.getDefaultValue() != null)
       defaultValue = Some(ImlExpressionToCDLExpression(f.getDefaultValue().getExpression()))
@@ -205,10 +200,10 @@ object ImlFeatureToNode {
     if (f.getLegalValues() != null)
       legalValues = Some(ImlLegalValuesConstraintToCDLValuesOption(f.getLegalValues()))
 
-    var reqs = ImlConstraintsToCDLExpressions(f.getRequires)
-    var activeIf = ImlConstraintsToCDLExpressions(f.getActiveIfs)
-    var impls = ImlConstraintsToCDLExpressions(f.getImpls)
-    var children = ImlFeatureListToImlNodeList(f.getSubfeatures)
+    val reqs = ImlConstraintsToCDLExpressions(f.getRequires)
+    val activeIf = ImlConstraintsToCDLExpressions(f.getActiveIfs)
+    val impls = ImlConstraintsToCDLExpressions(f.getImpls)
+    val children = ImlFeatureListToImlNodeList(f.getSubfeatures)
 
     return new Node(
        id,
@@ -264,17 +259,17 @@ object ImlFlavorToCDLFlavor {
 
 object ImlLegalValuesConstraintToCDLValuesOption {
   def apply(legalValues : LegalValuesConstraint) : LegalValuesOption =  {
-    val ranges = List[Range]()
+    val ranges = scala.collection.mutable.ListBuffer[Range]()
     val iterator = legalValues.getExpressions().iterator
 
     while(iterator.hasNext) {
       val exp = iterator.next
       if (exp.isInstanceOf[IntervalExpression])
-        ranges.+:(ImlIntervalExpressionToMinMaxRange(exp.asInstanceOf[IntervalExpression]))
+        ranges += (ImlIntervalExpressionToMinMaxRange(exp.asInstanceOf[IntervalExpression]))
       else 
-        ranges.+:(new SingleValueRange(ImlExpressionToCDLExpression(exp)))
+        ranges += (new SingleValueRange(ImlExpressionToCDLExpression(exp)))
     }    
-    return new LegalValuesOption(ranges)
+    return new LegalValuesOption(ranges.toList)
   }
 }
 
@@ -292,14 +287,14 @@ object ImlIntervalExpressionToMinMaxRange {
 
 object ImlConstraintsToCDLExpressions {
   def apply(constraints:java.util.List[_ <: UnaryImlConstraint]) : List[CDLExpression] = {
-    var res = List[CDLExpression]()
+    var res = scala.collection.mutable.ListBuffer[CDLExpression]()
     if (! gsd.iml.util.CollectionsUtils.isEmpty(constraints)) {
       val iterator = constraints.iterator
       while(iterator.hasNext) {
-        res.+:(ImlExpressionToCDLExpression(iterator.next.getExpression()))
+        res += (ImlExpressionToCDLExpression(iterator.next.getExpression()))
       }
     }
-    return res
+    return res.toList
   }
 }
 
@@ -307,14 +302,15 @@ object ImlConstraintsToCDLExpressions {
 
 object ImlFeatureListToImlNodeList {
   def apply(features:java.util.List[Feature]) : List[Node] = {
-    var res = List[Node]()
+
+    var res = scala.collection.mutable.ListBuffer[Node]()
     if (! gsd.iml.util.CollectionsUtils.isEmpty(features)) {
       val iterator = features.iterator
       while(iterator.hasNext) {
-        res.+:(ImlFeatureToNode(iterator.next))
+        res += (ImlFeatureToNode(iterator.next))
       }
     }
-    return res
+    return res.toList
   }
 }
 

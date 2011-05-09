@@ -17,14 +17,19 @@
  * You should have received a copy of the GNU General Public License
  * along with CDLTools.  If not, see <http://www.gnu.org/licenses/>.
  */
-package gsd.cdl
+package gsd.cdl.parser
 
-import model._
+import gsd.cdl.parser.adapter.ImlFeatureListToImlNodeList
+import gsd.cdl.model.Node
 import gsd.iml.parser.ImlParser 
 
 object EcosIML {
 
   def parseFile(file : String) : List[Node] =  {
-    ImlFeatureListToImlNodeList(ImlParser.parse(file))
+    val original = ImlParser.parse(file)
+    println("original size " + original.size)
+    return ImlFeatureListToImlNodeList(original)
   }
+
+  def main(args:Array[String]) : Unit = parseFile("C:/Users/leonardo/Documents/NetBeansProjects/xcdl-analysis-dev_1.1/test/gsd/cdl/formula/showcase")
 }

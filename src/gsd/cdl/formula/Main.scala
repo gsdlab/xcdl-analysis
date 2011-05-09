@@ -8,7 +8,7 @@ import TypeHelper._
 import GRewriter._
 import ConditionalCompilation._
 import java.io._
-
+import gsd.cdl.parser.EcosIML
 
 object CompilationOptions {
   /**
