@@ -161,6 +161,14 @@ object ImlExpressionToCDLExpression {
       return new StringLiteral(exp.get())
     }
 
+    if (e.isInstanceOf[BooleanLiteralExpression]) {
+      val exp = e.asInstanceOf[BooleanLiteralExpression]
+      if (exp.get.equals(java.lang.Boolean.TRUE))
+        return new True()
+
+      return new False()
+    }
+
     if (e.isInstanceOf[ConditionalExpression]) {
       val exp = e.asInstanceOf[ConditionalExpression]
       return new Conditional(ImlExpressionToCDLExpression(exp.getCondition()),

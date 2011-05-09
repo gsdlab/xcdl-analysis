@@ -197,9 +197,9 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\BtRight$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Conditional.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\UnaryExpression.class
-..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpressionConversions.class
-..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Times.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\LegalValuesOption$.class
+..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Times.class
+..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpressionConversions.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\Conditional$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\LessThan$.class
 ..\src\gsd\cdl\model\CDLExpression.scala -> classes\gsd\cdl\model\CDLExpression.class
