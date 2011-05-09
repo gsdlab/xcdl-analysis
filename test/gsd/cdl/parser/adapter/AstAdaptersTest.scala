@@ -18,31 +18,9 @@ import gsd.cdl.test.util.TestFile
 
 class AstAdaptersTest extends JUnitSuite {
 
-  var originalFeatures = scala.collection.immutable.List[gsd.iml.ast.feature.Feature]()
-  var convertedNodes = scala.collection.immutable.List[Node]()
-
-  @Before
-    def setUp: Unit = {
-      var features = scala.collection.mutable.ListBuffer[gsd.iml.ast.feature.Feature]()
-      var nodes = scala.collection.mutable.ListBuffer[Node]()
-      val imlResult = ImlParser.parse(TestFile.get("gsd/cdl/parser/adapter/adderII.iml"))
-      if (!gsd.iml.util.CollectionsUtils.isEmpty(imlResult)) {
-        val iterator = imlResult.iterator
-        while(iterator.hasNext) {
-          val aNode = iterator.next
-          val translatedNode = ImlFeatureToNode(aNode)
-          nodes += (translatedNode)
-          features += (aNode)
-        }
-      }
-
-      originalFeatures = features.toList
-      convertedNodes = nodes.toList
-    }
-
     @Test
-    def testAll() = {
-        for (file <- new java.io.File(TestFile.get("gsd/cdl/parser/adapter/iml/")).listFiles(new java.io.FilenameFilter() {
+    def testAllImlFiles() = {
+        for (file <- new java.io.File(TestFile.get("gsd/cdl/parser/adapter/input/iml/")).listFiles(new java.io.FilenameFilter() {
             def accept(dir:java.io.File, name:String):Boolean = {
                 return name.endsWith(".iml") ;
             }
@@ -62,8 +40,8 @@ class AstAdaptersTest extends JUnitSuite {
             }
           }
 
-          originalFeatures = features.toList
-          convertedNodes = nodes.toList
+          var originalFeatures = features.toList
+          var convertedNodes = nodes.toList
           assertEquals(originalFeatures.size, convertedNodes.size)
           for (i <- 0 to originalFeatures.size - 1) {
             assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
@@ -71,14 +49,6 @@ class AstAdaptersTest extends JUnitSuite {
         }
     }
 
-//    @Test
-    def translateTest() = {
-     assertEquals(originalFeatures.size, convertedNodes.size)
-     for (i <- 0 to originalFeatures.size - 1) {
-      assertTrue(testFeatureToNode(convertedNodes.apply(i), originalFeatures.apply(i)))
-     }
-    }
-    
     private def testFeatureToNode(node:Node, feature:gsd.iml.ast.feature.Feature):Boolean = {
 //      println("Comparing: " + node.id + ", and: " + feature.getId)
       if (!testFeatureToNodeId(node, feature)) { //id
@@ -350,11 +320,14 @@ class AstAdaptersTest extends JUnitSuite {
         case FunctionCall("is_loaded", scala.List(exp)) => {
             testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsLoadedFunctionCallExpression].getArgument)
           }
+        case FunctionCall("is_enabled", scala.List(exp)) => {
+            expression.isInstanceOf[IsEnabledFunctionCallExpression] &&
+            testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsEnabledFunctionCallExpression].getArgument)
+          }
         case FunctionCall("is_active", scala.List(exp)) => {
             expression.isInstanceOf[IsActiveFunctionCallExpression] &&
             testCDLExpressionToParsedExpression(exp, expression.asInstanceOf[IsActiveFunctionCallExpression].getArgument)
           }
-//        case FunctionCall("bool", scala.List(e)) => {true}
         case True() => {
             expression.asInstanceOf[BooleanLiteralExpression].get == java.lang.Boolean.TRUE
           }
@@ -380,6 +353,16 @@ class AstAdaptersTest extends JUnitSuite {
               expression.isInstanceOf[BitwiseAndExpression] &&
               testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseAndExpression].getLeft) &&
               testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseAndExpression].getRight)
+            }
+        case BtLeft(left, right) => {
+              expression.isInstanceOf[BitwiseLeftShiftExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseLeftShiftExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseLeftShiftExpression].getRight)
+            }
+        case BtRight(left, right) => {
+              expression.isInstanceOf[BitwiseRightShiftExpression] &&
+              testCDLExpressionToParsedExpression(left, expression.asInstanceOf[BitwiseRightShiftExpression].getLeft) &&
+              testCDLExpressionToParsedExpression(right, expression.asInstanceOf[BitwiseRightShiftExpression].getRight)
             }
 
         case _ => throw new Exception("Unsupported CDLExpression class for conversion: " + cdlExpression
