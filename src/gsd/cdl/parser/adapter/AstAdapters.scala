@@ -66,7 +66,7 @@ object ImlExpressionToCDLExpression {
         args += ImlExpressionToCDLExpression(iterator.next)
       }
 
-      return new FunctionCall(exp.getName(), args.toList)
+      return new FunctionCall(exp.getFunctionName, args.toList)
    }
 
     if (e.isInstanceOf[EqualExpression]) {

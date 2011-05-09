@@ -7,15 +7,12 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\formula\ConditionalCompilation.scala -> ..\src\gsd\cdl\formula\ConditionalCompilation.scala
 ..\src\gsd\cdl\model\CDLExpression.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\parser\adapter\AstAdapters.scala
-..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\model\IML.scala
-..\src\gsd\cdl\parser\adapter\AstAdapters.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\model\IML.scala -> ..\src\gsd\cdl\model\IML.scala
 ..\src\gsd\cdl\model\IML.scala -> ..\src\gsd\cdl\model\CDLExpression.scala
 ..\src\gsd\cdl\formula\Tests.scala -> ..\src\gsd\cdl\formula\Main.scala
 ..\src\gsd\cdl\formula\Tests.scala -> ..\src\gsd\cdl\formula\Tests.scala
 ..\src\gsd\cdl\parser\TypeFilterList.scala -> ..\src\gsd\cdl\parser\TypeFilterList.scala
 ..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\parser\adapter\AstAdapters.scala
-..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\model\IML.scala
 ..\src\gsd\cdl\parser\IMLParser.scala -> ..\src\gsd\cdl\parser\IMLParser.scala
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> ..\src\gsd\cdl\formula\ExpressionRewrite.scala
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> ..\src\gsd\cdl\formula\Expression.scala
@@ -317,8 +314,8 @@ C:\Users\leonardo\Documents\NetBeansProjects\xcdl-analysis-dev_1.1\lib\graph-1.0
 ..\src\gsd\cdl\parser\IMLParser.scala -> classes\gsd\cdl\parser\EcosIML$.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gsd$cdl$formula$GRewriter$$gallProduct$1.class
-..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1$$anonfun$apply$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1.class
+..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gtopdown$1$$anonfun$apply$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$geverywheretd$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anon$1.class
 ..\src\gsd\cdl\formula\ExpressionRewrite.scala -> classes\gsd\cdl\formula\GRewriter$$anonfun$gbottomup$1.class
