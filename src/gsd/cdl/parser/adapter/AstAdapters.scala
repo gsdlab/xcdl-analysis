@@ -188,14 +188,6 @@ object ImlExpressionToCDLExpression {
                     ImlExpressionToCDLExpression(exp.getRight()))
     }
 
-    /*
-    if (e.isInstanceOf[ImpliesExpression]) {
-      val exp = e.asInstanceOf[ImpliesExpression]
-      return new Implies(ImlExpressionToCDLExpression(exp.getLeft()),
-                      ImlExpressionToCDLExpression(exp.getRight()))
-    }
-    */
-
     throw new Exception("Unknown adapter for " + e.getClass().getName())
   }
 }
