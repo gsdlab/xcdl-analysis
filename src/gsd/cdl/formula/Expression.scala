@@ -441,6 +441,13 @@ case class GLessThan(left:GExpression, right:GExpression) extends GStaticTypedBi
 case class GGreaterThan(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(BoolType, IntType, left, right, ">")
 case class GLessEqThan(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(BoolType, IntType, left, right, "<=")
 case class GGreaterEqThan(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(BoolType, IntType, left, right, ">=")
+
+case class GBtAnd(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "&")
+case class GBtOr(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "|")
+case class GBtXor(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "^")
+case class GBtLeft(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "<<")
+case class GBtRight(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, ">>")
+
 case class GPlus(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "+")
 case class GMinus(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "-")
 case class GTimes(left:GExpression, right:GExpression) extends GStaticTypedBinaryExpression(IntType, IntType, left, right, "*")
@@ -452,6 +459,21 @@ case class GSubString(whole:GExpression, sub:GExpression) extends GStaticTypedBi
 case class GBoolFunc(inner:GExpression) extends GExpression() {
 	override def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (BoolType, oldChildTypes)
 	override def toString = "bool(" + inner + ")"
+	override def getType() = BoolType
+}
+case class GIsActiveFunc(inner:GExpression) extends GExpression() {
+	override def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (BoolType, oldChildTypes)
+	override def toString = "is_active(" + inner + ")"
+	override def getType() = BoolType
+}
+case class GIsLoadedFunc(inner:GExpression) extends GExpression() {
+	override def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (BoolType, oldChildTypes)
+	override def toString = "is_loaded(" + inner + ")"
+	override def getType() = BoolType
+}
+case class GIsEnabledFunc(inner:GExpression) extends GExpression() {
+	override def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (BoolType, oldChildTypes)
+	override def toString = "is_enabled(" + inner + ")"
 	override def getType() = BoolType
 }
 
