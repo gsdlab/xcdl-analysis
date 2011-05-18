@@ -1,0 +1,6755 @@
+
+package CYGPKG_HAL{
+  display "eCos HAL"
+  requires [CYGPKG_INFRA ]
+
+  component CYGPKG_HAL_COMMON{
+    display "Platform-independent HAL options"
+    flavor none 
+
+    option CYGFUN_HAL_COMMON_KERNEL_SUPPORT{
+      display "Provide eCos kernel support"
+      requires [CYGPKG_KERNEL ]
+    }
+
+    option CYGPKG_HAL_EXCEPTIONS{
+      display "HAL exception support"
+      requires [CYGPKG_KERNEL_EXCEPTIONS ]
+    }
+
+    option CYGSEM_HAL_STOP_CONSTRUCTORS_ON_FLAG{
+      display "Stop calling constructors early"
+      requires [CYGSEM_LIBC_INVOKE_DEFAULT_STATIC_CONSTRUCTORS ]
+    }
+
+    interface CYGINT_HAL_SUPPORTS_MMU_TABLES{
+      display "HAL uses the MMU and allows for CDL manipulation of it's use"
+    }
+
+    option CYGSEM_HAL_INSTALL_MMU_TABLES{
+      display "Install MMU tables."
+      active_if [CYGINT_HAL_SUPPORTS_MMU_TABLES ]
+    }
+
+    option CYGSEM_HAL_STATIC_MMU_TABLES{
+      display "Use static MMU tables."
+      requires [CYGSEM_HAL_INSTALL_MMU_TABLES ]
+    }
+
+    component CYGDBG_HAL_DIAG_TO_DEBUG_CHAN{
+      display "Route diagnostic output to debug channel"
+      active_if [!CYGSEM_HAL_VIRTUAL_VECTOR_INHERIT_CONSOLE ]
+      active_if [CYGPKG_HAL_ARM || CYGPKG_HAL_POWERPC_MPC8xx || CYGPKG_HAL_V85X_V850 || CYGSEM_HAL_VIRTUAL_VECTOR_DIAG ]
+
+      option CYGSEM_HAL_DIAG_MANGLER{
+        display "Mangler used on diag output"
+        legal_values ["GDB" "None" ]
+        flavor data 
+      }
+    }
+
+    component CYGBLD_HAL_LINKER_GROUPED_LIBS{
+      display "Grouped libraries for linking"
+      requires [is_substr(CYGBLD_HAL_LINKER_GROUPED_LIBS, "libtarget.a") ]
+      flavor data 
+
+      option CYGBLD_HAL_LINKER_GROUPED_LIBS_DEFAULT{
+        display "Default setting"
+        flavor data 
+      }
+    }
+  }
+
+  component CYGPKG_HAL_COMMON_INTERRUPTS{
+    display "HAL interrupt handling"
+    flavor none 
+
+    option CYGIMP_HAL_COMMON_INTERRUPTS_USE_INTERRUPT_STACK{
+      display "Use separate stack for interrupts"
+    }
+
+    option CYGNUM_HAL_COMMON_INTERRUPTS_STACK_SIZE{
+      display "Interrupt stack size"
+      legal_values [128 to 1048576 ]
+      flavor data 
+    }
+
+    option CYGSEM_HAL_COMMON_INTERRUPTS_ALLOW_NESTING{
+      display "Allow nested interrupts"
+    }
+
+    option CYGDBG_HAL_COMMON_INTERRUPTS_SAVE_MINIMUM_CONTEXT{
+      display "Save minimum context on interrupt"
+    }
+
+    option CYGIMP_HAL_COMMON_INTERRUPTS_CHAIN{
+      display "Chain all interrupts together"
+    }
+
+    option CYGIMP_HAL_COMMON_INTERRUPTS_IGNORE_SPURIOUS{
+      display "Ignore spurious [fleeting] interrupts"
+    }
+  }
+
+  component CYGPKG_HAL_COMMON_CONTEXT{
+    display "HAL context switch support"
+    flavor none 
+
+    option CYGDBG_HAL_COMMON_CONTEXT_SAVE_MINIMUM{
+      display "Use minimum thread context"
+    }
+  }
+
+  component CYGPKG_HAL_CACHE_CONTROL{
+    display "Explicit control over cache behaviour"
+    flavor none 
+
+    component CYGSEM_HAL_ENABLE_DCACHE_ON_STARTUP{
+      display "Enable DATA cache on startup"
+
+      option CYGSEM_HAL_DCACHE_STARTUP_MODE{
+        display "DATA cache mode on startup"
+        legal_values ["COPYBACK" "WRITETHRU" ]
+        flavor data 
+      }
+    }
+
+    option CYGSEM_HAL_ENABLE_ICACHE_ON_STARTUP{
+      display "Enable INSTRUCTION cache on startup"
+    }
+  }
+
+  component CYGPKG_HAL_DEBUG{
+    display "Source-level debugging support"
+    flavor none 
+
+    interface CYGINT_HAL_DEBUG_GDB_STUBS{
+      display "Support for GDB stubs"
+    }
+
+    option CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS{
+      display "Include GDB stubs in HAL"
+      active_if [CYGINT_HAL_DEBUG_GDB_STUBS ]
+      requires [! CYGSEM_HAL_USE_ROM_MONITOR ]
+      requires [! CYGDBG_HAL_COMMON_INTERRUPTS_SAVE_MINIMUM_CONTEXT ]
+      requires [! CYGDBG_HAL_COMMON_CONTEXT_SAVE_MINIMUM ]
+      requires [!CYGSEM_HAL_VIRTUAL_VECTOR_DIAG || CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_COMMS ]
+    }
+
+    interface CYGINT_HAL_DEBUG_GDB_STUBS_BREAK{
+      display "Support for external break support in GDB stubs"
+    }
+
+    option CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT{
+      display "Include GDB external break support for stubs"
+      active_if [CYGINT_HAL_DEBUG_GDB_STUBS_BREAK ]
+      requires [CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS ]
+    }
+
+    interface CYGINT_HAL_DEBUG_GDB_CTRLC_UNSUPPORTED{
+      display "Platform does not support CTRLC"
+    }
+
+    option CYGDBG_HAL_DEBUG_GDB_CTRLC_SUPPORT{
+      display "Include GDB external break support when no stubs"
+      requires [!CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT ]
+      active_if [CYGSEM_HAL_USE_ROM_MONITOR || CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS ]
+      active_if [CYGINT_HAL_DEBUG_GDB_CTRLC_UNSUPPORTED == 0 ]
+    }
+
+    option CYGDBG_HAL_DEBUG_GDB_THREAD_SUPPORT{
+      display "Include GDB multi-threading debug support"
+      active_if [CYGSEM_HAL_ROM_MONITOR || CYGDBG_KERNEL_DEBUG_GDB_THREAD_SUPPORT ]
+    }
+
+    option CYGNUM_HAL_DEBUG_GDB_PROTOCOL_RETRIES{
+      display "Number of times to retry sending a $O packet"
+      flavor data 
+    }
+
+    option CYGNUM_HAL_DEBUG_GDB_PROTOCOL_TIMEOUT{
+      display "Timeout period for GDB packets"
+      flavor data 
+    }
+
+    option CYGDBG_HAL_CRCTABLE_LOCATION{
+      display "Location of CRC32 table"
+      legal_values ["ROM" "RAM" ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_HAL_ROM_MONITOR{
+    display "ROM monitor support"
+    flavor none 
+
+    interface CYGINT_HAL_VIRTUAL_VECTOR_SUPPORT{
+      display "Target has virtual vector support"
+    }
+
+    interface CYGINT_HAL_VIRTUAL_VECTOR_COMM_BAUD_SUPPORT{
+      display "Target supports baud rate control via vectors"
+    }
+
+    component CYGSEM_HAL_VIRTUAL_VECTOR_SUPPORT{
+      display "Enable use of virtual vector calling interface"
+      active_if [CYGINT_HAL_VIRTUAL_VECTOR_SUPPORT ]
+      calculated [1 ]
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_INHERIT_CONSOLE{
+        display "Inherit console settings from ROM monitor"
+        active_if [CYGSEM_HAL_USE_ROM_MONITOR ]
+      }
+
+      option CYGPRI_HAL_VIRTUAL_VECTOR_DEBUG_CHANNEL_CONFIGURABLE{
+        display "Debug channel is configurable"
+        calculated [CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_COMMS ]
+      }
+
+      option CYGPRI_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_CONFIGURABLE{
+        display "Console channel is configurable"
+        calculated [!CYGSEM_HAL_VIRTUAL_VECTOR_INHERIT_CONSOLE && !CYGDBG_HAL_DIAG_TO_DEBUG_CHAN ]
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_INIT_WHOLE_TABLE{
+        display "Initialize whole of virtual vector table"
+        requires [CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_RESET ]
+        requires [CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_DELAY_US ]
+        requires [CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_DATA ]
+        requires [CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_COMMS ]
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_DEFAULT{
+        display "Claim virtual vector table entries by default"
+        active_if [!CYGSEM_HAL_VIRTUAL_VECTOR_INIT_WHOLE_TABLE ]
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_RESET{
+        display "Claim reset virtual vectors"
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_VERSION{
+        display "Claim version virtual vectors"
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_DELAY_US{
+        display "Claim delay_us virtual vector"
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_DATA{
+        display "Claim data virtual vectors"
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_CLAIM_COMMS{
+        display "Claim comms virtual vectors"
+      }
+
+      option CYGSEM_HAL_VIRTUAL_VECTOR_DIAG{
+        display "Do diagnostic IO via virtual vector table"
+        calculated [1 ]
+      }
+    }
+
+    option CYGSEM_HAL_ROM_MONITOR{
+      display "Behave as a ROM monitor"
+      requires [CYG_HAL_STARTUP != "RAM" ]
+      flavor bool 
+    }
+
+    option CYGSEM_HAL_USE_ROM_MONITOR{
+      display "Work with a ROM monitor"
+      legal_values ["Generic" "GDB_stubs" ]
+      requires [CYG_HAL_STARTUP == "RAM" ]
+      flavor booldata 
+    }
+  }
+
+  interface CYGINT_HAL_PLF_IF_INIT{
+    display "Platform defined I/O channels."
+  }
+
+  interface CYGINT_HAL_PLF_IF_IDE{
+    display "Platform IDE I/O support."
+  }
+
+  option CYGPKG_HAL_GDB_FILEIO{
+    display "File I/O operations via GDB"
+    active_if [CYGSEM_REDBOOT_BSP_SYSCALLS ]
+    requires [CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS ]
+  }
+
+  option CYGPKG_HAL_BUILD_COMPILER_TESTS{
+    display "Build Compiler sanity checking tests"
+  }
+
+  component CYGPKG_HAL_TESTS{
+    display "Common HAL tests"
+    calculated ["tests/context tests/basic" . ((!CYGINT_HAL_TESTS_NO_CACHES) ? " tests/cache" : "") . ((CYGPKG_HAL_BUILD_COMPILER_TESTS) ? " tests/cpp1 tests/vaargs" : "") . ((!CYGVAR_KERNEL_COUNTERS_CLOCK) ? " tests/intr" : "") ]
+    flavor data 
+
+    interface CYGINT_HAL_TESTS_NO_CACHES{
+      display "Interface for cache presence"
+      flavor booldata 
+    }
+  }
+
+  package CYGPKG_HAL_ARM{
+    display "ARM architecture"
+
+    interface CYGINT_HAL_ARM_THUMB_ARCH{
+      display "The CPU architecture supports THUMB mode"
+    }
+
+    option CYGHWR_THUMB{
+      display "Enable Thumb instruction set"
+      active_if [CYGINT_HAL_ARM_THUMB_ARCH != 0 ]
+    }
+
+    option CYGBLD_ARM_ENABLE_THUMB_INTERWORK{
+      display "Enable Thumb interworking compiler option"
+      active_if [CYGINT_HAL_ARM_THUMB_ARCH != 0 ]
+    }
+
+    interface CYGINT_HAL_ARM_BIGENDIAN{
+      display "The platform and architecture supports Big Endian operation"
+    }
+
+    option CYGHWR_HAL_ARM_BIGENDIAN{
+      display "Use big-endian mode"
+      active_if [CYGINT_HAL_ARM_BIGENDIAN != 0 ]
+    }
+
+    interface CYGINT_HAL_ARM_ARCH_ARM7{
+      display "The platform uses a processor with an ARM7 core"
+    }
+
+    interface CYGINT_HAL_ARM_ARCH_ARM9{
+      display "The platform uses a processor with an ARM9 core"
+    }
+
+    interface CYGINT_HAL_ARM_ARCH_STRONGARM{
+      display "The platform uses a processor with a StrongARM core"
+    }
+
+    interface CYGINT_HAL_ARM_ARCH_XSCALE{
+      display "The platform uses a processor with a XScale core"
+    }
+
+    option CYGHWR_HAL_ARM_CPU_FAMILY{
+      display "ARM CPU family"
+      legal_values [(CYGINT_HAL_ARM_ARCH_ARM7 != 0) ? "ARM7" : "" (CYGINT_HAL_ARM_ARCH_ARM9 != 0) ? "ARM9" : "" (CYGINT_HAL_ARM_ARCH_STRONGARM != 0) ? "StrongARM" : "" (CYGINT_HAL_ARM_ARCH_XSCALE != 0) ? "XScale" : "" "" ]
+      flavor data 
+    }
+
+    option CYGBLD_HAL_ARM_EABI{
+      display "Build for ARM EABI"
+      implements [CYGINT_LIBSTDCXX_NO_CXX_EXCEPTION_REG_FRAME_IMPL ]
+    }
+
+    option CYGHWR_HAL_ARM_DUMP_EXCEPTIONS{
+      display "Provide diagnostic dump for exceptions"
+      requires [!CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS ]
+    }
+
+    option CYGIMP_HAL_PROCESS_ALL_EXCEPTIONS{
+      display "Process all exceptions with the eCos application"
+    }
+
+    option CYGHWR_HAL_ARM_ICE_THREAD_SUPPORT{
+      display "Support GDB thread operations via ICE/Multi-ICE"
+      requires [CYGDBG_HAL_DEBUG_GDB_INCLUDE_STUBS ]
+      requires [CYGDBG_HAL_DEBUG_GDB_THREAD_SUPPORT ]
+      requires [CYGDBG_KERNEL_DEBUG_GDB_THREAD_SUPPORT ]
+    }
+
+    option CYGOPT_HAL_ARM_SYSCALL_GPROF_SUPPORT{
+      display "Support for 'gprof' callbacks"
+      calculated [1 ]
+      active_if [CYGSEM_REDBOOT_BSP_SYSCALLS ]
+      active_if [CYGDBG_HAL_DEBUG_GDB_CTRLC_SUPPORT || CYGDBG_HAL_DEBUG_GDB_BREAK_SUPPORT ]
+      implements [CYGINT_REDBOOT_BSP_SYSCALLS_GPROF_SUPPORT ]
+    }
+
+    option CYGOPT_HAL_ARM_WITH_USER_MODE{
+      display "Accept exceptions and irq's occurring in user mode"
+    }
+
+    option CYGOPT_HAL_ARM_PRESERVE_SVC_SPSR{
+      display "Preserve svc spsr before returning to svc mode"
+    }
+
+    option CYGBLD_LINKER_SCRIPT{
+      display "Linker script"
+      calculated ["src/arm.ld" ]
+      flavor data 
+    }
+
+    interface CYGINT_HAL_ARM_MEM_REAL_REGION_TOP{
+      display "Implementations of hal_arm_mem_real_region_top()"
+    }
+
+    package CYGPKG_HAL_ARM_INTEGRATOR{
+      display "ARM INTEGRATOR evaluation board"
+      implements [CYGINT_HAL_DEBUG_GDB_STUBS ]
+      implements [CYGINT_HAL_DEBUG_GDB_STUBS_BREAK ]
+      implements [CYGINT_HAL_VIRTUAL_VECTOR_SUPPORT ]
+      implements [CYGINT_HAL_TESTS_NO_CACHES ]
+
+      component CYGPKG_HAL_ARM_INTEGRATOR_ARM7{
+        display "ARM 7 specialization"
+        active_if [!CYGPKG_HAL_ARM_ARM9 ]
+        calculated [!CYGPKG_HAL_ARM_ARM9 ]
+        implements [CYGINT_HAL_ARM_ARCH_ARM7 ]
+      }
+
+      component CYGPKG_HAL_ARM_INTEGRATOR_ARM9{
+        display "ARM 9 specialization"
+        active_if [CYGPKG_HAL_ARM_ARM9 ]
+        calculated [CYGPKG_HAL_ARM_ARM9 ]
+        requires [CYGPKG_HAL_ARM_ARM9_ARM966E ]
+      }
+
+      component CYG_HAL_STARTUP{
+        display "Startup type"
+        legal_values ["RAM" "ROM" "ROMRAM" ]
+        flavor data 
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_DEFAULT{
+        display "Default console channel."
+        calculated [0 ]
+        flavor data 
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_BAUD{
+        display "Diagnostic serial port baud rate"
+        legal_values [9600 19200 38400 115200 ]
+        flavor data 
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_DEBUG_CHANNEL_BAUD{
+        display "GDB serial port baud rate"
+        legal_values [9600 19200 38400 115200 ]
+        flavor data 
+      }
+
+      option CYGHWR_HAL_ARM_INTEGRATOR_DIAG_LEDS{
+        display "Enable use of PPx LEDs"
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS{
+        display "Number of communication channels on the board"
+        calculated [2 ]
+        flavor data 
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_DEBUG_CHANNEL{
+        display "Debug serial port"
+        active_if [CYGPRI_HAL_VIRTUAL_VECTOR_DEBUG_CHANNEL_CONFIGURABLE ]
+        legal_values [0 to CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS-1 ]
+        flavor data 
+      }
+
+      option CYGNUM_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL{
+        display "Diagnostic serial port"
+        active_if [CYGPRI_HAL_VIRTUAL_VECTOR_CONSOLE_CHANNEL_CONFIGURABLE ]
+        legal_values [0 to CYGNUM_HAL_VIRTUAL_VECTOR_COMM_CHANNELS-1 ]
+        flavor data 
+      }
+
+      component CYGNUM_HAL_RTC_CONSTANTS{
+        display "Real-time clock constants"
+        flavor none 
+
+        option CYGNUM_HAL_RTC_NUMERATOR{
+          display "Real-time clock numerator"
+          flavor data 
+        }
+
+        option CYGNUM_HAL_RTC_DENOMINATOR{
+          display "Real-time clock denominator"
+          flavor data 
+        }
+
+        option CYGNUM_HAL_RTC_PERIOD{
+          display "Real-time clock period"
+          flavor data 
+        }
+      }
+
+      component CYGHWR_MEMORY_LAYOUT{
+        display "Memory layout"
+        calculated [CYG_HAL_STARTUP == "RAM" ? "arm_integrator_ram" : CYG_HAL_STARTUP == "ROMRAM" ? "arm_integrator_romram" : "arm_integrator_rom" ]
+        flavor data 
+
+        option CYGHWR_MEMORY_LAYOUT_LDI{
+          display "Memory layout linker script fragment"
+          calculated [CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_arm_integrator_ram.ldi>" : CYG_HAL_STARTUP == "ROMRAM" ? "<pkgconf/mlt_arm_integrator_romram.ldi>" : "<pkgconf/mlt_arm_integrator_rom.ldi>" ]
+          flavor data 
+        }
+
+        option CYGHWR_MEMORY_LAYOUT_H{
+          display "Memory layout header file"
+          calculated [CYG_HAL_STARTUP == "RAM" ? "<pkgconf/mlt_arm_integrator_ram.h>" : CYG_HAL_STARTUP == "ROMRAM" ? "<pkgconf/mlt_arm_integrator_romram.h>" : "<pkgconf/mlt_arm_integrator_rom.h>" ]
+          flavor data 
+        }
+      }
+    }
+  }
+}
+
+package CYGPKG_IO{
+  display "I/O sub-system"
+  requires [CYGPKG_ERROR ]
+
+  option CYGDBG_IO_INIT{
+    display "Debug I/O sub-system"
+  }
+
+  component CYGPKG_IO_FILE_SUPPORT{
+    display "Basic support for file based I/O"
+    active_if [!CYGPKG_IO_FILEIO ]
+
+    option CYGPKG_IO_NFILE{
+      display "Number of open files"
+      flavor data 
+    }
+  }
+
+  package CYGPKG_IO_SERIAL{
+    display "Serial device drivers"
+    active_if [CYGPKG_IO ]
+    requires [CYGPKG_ERROR ]
+
+    option CYGOPT_IO_SERIAL_SUPPORT_NONBLOCKING{
+      display "Support non-blocking read and write calls"
+    }
+
+    interface CYGINT_IO_SERIAL_BLOCK_TRANSFER{
+      display "Driver requires block transfer callback functions"
+    }
+
+    interface CYGINT_IO_SERIAL_LINE_STATUS_HW{
+      display "Serial driver supports line status"
+    }
+
+    option CYGOPT_IO_SERIAL_SUPPORT_LINE_STATUS{
+      display "Support line status callbacks"
+      requires [CYGINT_IO_SERIAL_LINE_STATUS_HW > 0 ]
+    }
+
+    component CYGPKG_IO_SERIAL_FLOW_CONTROL{
+      display "Flow control"
+      requires [(CYGOPT_IO_SERIAL_FLOW_CONTROL_SOFTWARE || CYGOPT_IO_SERIAL_FLOW_CONTROL_HW) ]
+      flavor bool 
+
+      component CYGOPT_IO_SERIAL_FLOW_CONTROL_SOFTWARE{
+        display "Software flow control"
+
+        option CYGDAT_IO_SERIAL_FLOW_CONTROL_XON_CHAR{
+          display "Start character"
+          legal_values [0 to 255 ]
+          flavor data 
+        }
+
+        option CYGDAT_IO_SERIAL_FLOW_CONTROL_XOFF_CHAR{
+          display "Stop character"
+          legal_values [0 to 255 ]
+          flavor data 
+        }
+      }
+
+      option CYGOPT_IO_SERIAL_FLOW_CONTROL_HW{
+        display "Hardware flow control"
+        active_if [CYGINT_IO_SERIAL_FLOW_CONTROL_HW > 0 ]
+        requires [CYGINT_IO_SERIAL_FLOW_CONTROL_HW > 0 ]
+        requires [CYGOPT_IO_SERIAL_SUPPORT_LINE_STATUS ]
+      }
+
+      interface CYGINT_IO_SERIAL_FLOW_CONTROL_HW{
+        display "Serial h/w supports hardware flow control"
+      }
+
+      option CYGDAT_IO_SERIAL_FLOW_CONTROL_DEFAULT{
+        display "Default flow control method"
+        legal_values ["NONE" "XONXOFF" "RTSCTS" "DSRDTR" ]
+        flavor data 
+      }
+
+      option CYGNUM_IO_SERIAL_FLOW_CONTROL_LOW_WATER_PERCENT{
+        display "Rx flow control low water mark"
+        legal_values [1 to 100 ]
+        flavor data 
+      }
+
+      option CYGNUM_IO_SERIAL_FLOW_CONTROL_HIGH_WATER_PERCENT{
+        display "Rx flow control high water mark"
+        legal_values [1 to 100 ]
+        requires [CYGNUM_IO_SERIAL_FLOW_CONTROL_HIGH_WATER_PERCENT >= CYGNUM_IO_SERIAL_FLOW_CONTROL_LOW_WATER_PERCENT ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_IO_SERIAL_TTY{
+      display "TTY-mode serial device drivers"
+      flavor bool 
+
+      component CYGPKG_IO_SERIAL_HALDIAG{
+        display "HAL/diag serial device driver"
+        flavor bool 
+      }
+
+      option CYGDAT_IO_SERIAL_TTY_CONSOLE{
+        display "Console device name"
+        flavor data 
+      }
+
+      component CYGPKG_IO_SERIAL_TTY_TTYDIAG{
+        display "TTY mode HAL/diag channel"
+        flavor bool 
+      }
+
+      component CYGPKG_IO_SERIAL_TTY_TTY0{
+        display "TTY mode channel #0"
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TTY_TTY0_DEV{
+          display "TTY mode channel #0 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TTY_TTY1{
+        display "TTY mode channel #1"
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TTY_TTY1_DEV{
+          display "TTY mode channel #1 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TTY_TTY2{
+        display "TTY mode channel #2"
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TTY_TTY2_DEV{
+          display "TTY mode channel #2 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TTY_TTY3{
+        display "TTY mode channel #3"
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TTY_TTY3_DEV{
+          display "TTY mode channel #3 device"
+          flavor data 
+        }
+      }
+    }
+
+    component CYGPKG_IO_SERIAL_TERMIOS{
+      display "Termios compatible TTY drivers"
+      requires [CYGPKG_ISOINFRA ]
+      requires [CYGPKG_IO_FILEIO ]
+      requires [CYGINT_ISO_ERRNO_CODES ]
+      requires [CYGINT_ISO_ERRNO ]
+      requires [CYGINT_ISO_MALLOC ]
+      implements [CYGINT_ISO_TERMIOS ]
+      flavor bool 
+
+      interface CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY{
+        display "Interface for termios tty driver file enabling"
+      }
+
+      option CYGBLD_IO_SERIAL_TERMIOS_TERMIOS_TTY{
+        display "Build termios tty driver file"
+        calculated [1 ]
+        active_if [CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY > 0 ]
+      }
+
+      component CYGPKG_IO_SERIAL_TERMIOS_TERMIOS0{
+        display "Termios TTY channel #0"
+        implements [CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY ]
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TERMIOS_TERMIOS0_DEV{
+          display "Termios TTY channel #0 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TERMIOS_TERMIOS1{
+        display "Termios TTY channel #1"
+        implements [CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY ]
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TERMIOS_TERMIOS1_DEV{
+          display "Termios TTY channel #1 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TERMIOS_TERMIOS2{
+        display "Termios TTY channel #2"
+        implements [CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY ]
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TERMIOS_TERMIOS2_DEV{
+          display "Termios TTY channel #2 device"
+          flavor data 
+        }
+      }
+
+      component CYGPKG_IO_SERIAL_TERMIOS_TERMIOS3{
+        display "Termios TTY channel #3"
+        implements [CYGINT_IO_SERIAL_TERMIOS_TERMIOS_TTY ]
+        flavor bool 
+
+        option CYGDAT_IO_SERIAL_TERMIOS_TERMIOS3_DEV{
+          display "Termios TTY channel #3 device"
+          flavor data 
+        }
+      }
+
+      option CYGSEM_IO_SERIAL_TERMIOS_USE_SIGNALS{
+        display "Support signals"
+        requires [CYGINT_ISO_SIGNAL_NUMBERS ]
+        requires [CYGINT_ISO_SIGNAL_IMPL ]
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_IO_SERIAL_DEVICES{
+      display "Hardware serial device drivers"
+      flavor bool 
+
+      package CYGPKG_IO_SERIAL_ARM_INTEGRATOR{
+        display "ARM INTEGRATOR serial device drivers"
+        active_if [CYGPKG_IO_SERIAL ]
+        active_if [CYGPKG_HAL_ARM_INTEGRATOR ]
+        requires [CYGPKG_ERROR ]
+
+        component CYGPKG_IO_SERIAL_ARM_INTEGRATOR_SERIAL0{
+          display "ARM INTEGRATOR serial port 0 driver"
+          flavor bool 
+
+          option CYGDAT_IO_SERIAL_ARM_INTEGRATOR_SERIAL0_NAME{
+            display "Device name for ARM INTEGRATOR serial port 0 driver"
+            flavor data 
+          }
+
+          option CYGNUM_IO_SERIAL_ARM_INTEGRATOR_SERIAL0_BAUD{
+            display "Baud rate for the ARM INTEGRATOR serial port 0 driver"
+            legal_values [50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600 4800 7200 9600 14400 19200 38400 57600 115200 234000 ]
+            flavor data 
+          }
+
+          option CYGNUM_IO_SERIAL_ARM_INTEGRATOR_SERIAL0_BUFSIZE{
+            display "Buffer size for the ARM INTEGRATOR serial port 0 driver"
+            legal_values [0 to 8192 ]
+            flavor data 
+          }
+        }
+
+        component CYGPKG_IO_SERIAL_ARM_INTEGRATOR_SERIAL1{
+          display "ARM INTEGRATOR serial port 1 driver"
+          flavor bool 
+
+          option CYGDAT_IO_SERIAL_ARM_INTEGRATOR_SERIAL1_NAME{
+            display "Device name for ARM INTEGRATOR serial port 1 driver"
+            flavor data 
+          }
+
+          option CYGNUM_IO_SERIAL_ARM_INTEGRATOR_SERIAL1_BAUD{
+            display "Baud rate for the ARM INTEGRATOR serial port 1 driver"
+            legal_values [50 75 110 "134_5" 150 200 300 600 1200 1800 2400 3600 4800 7200 9600 14400 19200 38400 57600 115200 234000 ]
+            flavor data 
+          }
+        }
+
+        option CYGNUM_IO_SERIAL_ARM_INTEGRATOR_SERIAL1_BUFSIZE{
+          display "Buffer size for the ARM INTEGRATOR serial port 1 driver"
+          legal_values [0 to 8192 ]
+          flavor data 
+        }
+
+        component CYGPKG_IO_SERIAL_ARM_INTEGRATOR_TESTING{
+          display "Testing parameters"
+          calculated [1 ]
+          active_if [CYGPKG_IO_SERIAL_ARM_INTEGRATOR_SERIAL0 ]
+          implements [CYGINT_IO_SERIAL_TEST_SKIP_57600 ]
+          implements [CYGINT_IO_SERIAL_TEST_SKIP_115200 ]
+          flavor bool 
+
+          option CYGPRI_SER_TEST_SER_DEV{
+            display "Serial device used for testing"
+            flavor data 
+          }
+        }
+      }
+    }
+
+    option CYGBLD_IO_SERIAL_EXTRA_TESTS{
+      display "Build extra serial tests"
+    }
+
+    component CYGPKG_IO_SERIAL_OPTIONS{
+      display "Serial device driver build options"
+      flavor none 
+
+      option CYGPKG_IO_SERIAL_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_IO_SERIAL_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_IO_SERIAL_TESTS{
+        display "Serial device driver tests"
+        calculated [CYGPKG_IO_SERIAL_DEVICES ? "tests/serial1 tests/serial2 tests/serial3 tests/serial4 tests/serial5 tests/tty1 tests/tty2 tests/flow1 tests/flow2" : "" ]
+        flavor data 
+      }
+    }
+
+    option CYGPKG_IO_SERIAL_SELECT_SUPPORT{
+      display "Enable serial device select support"
+      active_if [CYGPKG_IO_FILEIO ]
+      requires [CYGFUN_IO_FILEIO_SELECT == 1 ]
+      flavor bool 
+    }
+
+    component CYGPKG_IO_SERIAL_TEST_SPECS{
+      display "Serial testing specification"
+      calculated [1 ]
+      flavor bool 
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_9600{
+        display "Skip 9600 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_14400{
+        display "Skip 14400 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_19200{
+        display "Skip 19200 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_38400{
+        display "Skip 38400 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_57600{
+        display "Skip 57600 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_115200{
+        display "Skip 115200 baud testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_PARITY_EVEN{
+        display "Skip even-parity testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_PARITY_ODD{
+        display "Skip odd-parity testing"
+      }
+
+      interface CYGINT_IO_SERIAL_TEST_SKIP_STOP_2{
+        display "Skip 2-stop bit testing"
+      }
+    }
+  }
+
+  package CYGPKG_IO_ETH_DRIVERS{
+    display "Common ethernet support"
+    implements [CYGPKG_NET_DRIVER_FRAMEWORK ]
+
+    interface CYGHWR_NET_DRIVERS{
+      display "Network drivers"
+    }
+
+    interface CYGINT_IO_ETH_MULTICAST{
+      display "Driver supports multicast addressing"
+    }
+
+    component CYGDBG_IO_ETH_DRIVERS_DEBUG{
+      display "Support printing driver debug information"
+      flavor bool 
+
+      option CYGDBG_IO_ETH_DRIVERS_DEBUG_VERBOSITY{
+        display "Driver debug output verbosity"
+        flavor data 
+      }
+    }
+
+    option CYGNUM_IO_ETH_DRIVERS_SG_LIST_SIZE{
+      display "Size of scatter-gather I/O lists"
+      flavor data 
+    }
+
+    component CYGPKG_IO_ETH_DRIVERS_NET{
+      display "Support for standard eCos TCP/IP stack."
+      active_if [CYGPKG_NET ]
+      requires [CYGINT_ISO_STRING_STRFUNCS ]
+      implements [CYGINT_IO_ETH_INT_SUPPORT_REQUIRED ]
+      flavor bool 
+
+      component CYGPKG_IO_ETH_DRIVERS_WARN_NO_MBUFS{
+        display "Warn when there are no more mbufs"
+        flavor bool 
+      }
+
+      component CYGPKG_IO_ETH_DRIVERS_SIMULATED_FAILURES{
+        display "Simulate network failures for testing"
+        flavor bool 
+
+        option CYGPKG_IO_ETH_DRIVERS_SIMULATE_DROP_RX{
+          display "Drop incoming packets (percentage)"
+          legal_values [10 50 80 ]
+          flavor booldata 
+        }
+
+        option CYGPKG_IO_ETH_DRIVERS_SIMULATE_CORRUPT_RX{
+          display "Corrupt incoming packets (percentage)"
+          legal_values [10 50 80 ]
+          flavor booldata 
+        }
+
+        option CYGPKG_IO_ETH_DRIVERS_SIMULATE_DROP_TX{
+          display "Drop outgoing packets (percentage)"
+          legal_values [10 50 80 ]
+          flavor booldata 
+        }
+
+        option CYGPKG_IO_ETH_DRIVERS_SIMULATE_LINE_CUT{
+          display "Simulate a line cut from time to time"
+          flavor bool 
+        }
+      }
+    }
+
+    component CYGPKG_IO_ETH_DRIVERS_STAND_ALONE{
+      display "Support for stand-alone network stack."
+      active_if [!CYGPKG_NET ]
+      requires [CYGINT_ISO_STRING_MEMFUNCS ]
+      flavor bool 
+
+      option CYGSEM_IO_ETH_DRIVERS_PASS_PACKETS{
+        display "Pass packets to an alternate stack"
+        flavor bool 
+      }
+
+      option CYGNUM_IO_ETH_DRIVERS_NUM_PKT{
+        display "Number of [network] buffers"
+        legal_values [2 to 32 ]
+        flavor data 
+      }
+
+      option CYGSEM_IO_ETH_DRIVERS_WARN{
+        display "Show driver warnings"
+        active_if [CYGPKG_REDBOOT ]
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_IO_ETH_DRIVERS_LWIP{
+      display "Support for lwIP network stack."
+      requires [!CYGPKG_NET ]
+      active_if [CYGPKG_NET_LWIP ]
+      implements [CYGINT_IO_ETH_INT_SUPPORT_REQUIRED ]
+      flavor bool 
+    }
+
+    interface CYGINT_IO_ETH_INT_SUPPORT_REQUIRED{
+      display "Interrupt support required"
+      flavor booldata 
+    }
+
+    component CYGPKG_IO_ETH_DRIVERS_OPTIONS{
+      display "Common ethernet support build options"
+      flavor none 
+
+      option CYGPKG_IO_ETH_DRIVERS_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+    }
+
+    package CYGPKG_DEVS_ETH_INTEL_I82559{
+      display "Intel 82559 ethernet driver"
+      active_if [CYGPKG_IO_ETH_DRIVERS ]
+      active_if [CYGINT_DEVS_ETH_INTEL_I82559_REQUIRED ]
+      implements [CYGINT_IO_ETH_MULTICAST ]
+
+      option CYGDBG_DEVS_ETH_INTEL_I82559_CHATTER{
+        display "Prints ethernet device status info during startup"
+        flavor booldata 
+      }
+
+      option CYGNUM_DEVS_ETH_INTEL_I82559_DEV_COUNT{
+        display "Number of supported interfaces."
+        calculated [CYGINT_DEVS_ETH_INTEL_I82559_REQUIRED ]
+        flavor data 
+      }
+
+      component CYGDBG_DEVS_ETH_INTEL_I82559_KEEP_STATISTICS{
+        display "Keep Ethernet statistics"
+
+        option CYGDBG_DEVS_ETH_INTEL_I82559_KEEP_82559_STATISTICS{
+          display "Keep i82559 Internal statistics"
+        }
+      }
+
+      component CYGPKG_DEVS_ETH_INTEL_I82559_WRITE_EEPROM{
+        display "SIOCSIFHWADDR records MAC address in EEPROM"
+      }
+
+      option CYGNUM_DEVS_ETH_INTEL_I82559_MAX_RX_DESCRIPTORS{
+        display "Maximum number of RX descriptors"
+        flavor data 
+      }
+
+      option CYGNUM_DEVS_ETH_INTEL_I82559_MAX_TX_DESCRIPTORS{
+        display "Maximum number of TX descriptors"
+        flavor data 
+      }
+
+      component CYGPKG_DEVS_ETH_INTEL_I82559_OPTIONS{
+        display "Intel 82559 ethernet driver build options"
+        flavor none 
+
+        option CYGPKG_DEVS_ETH_INTEL_I82559_CFLAGS_ADD{
+          display "Additional compiler flags"
+          flavor data 
+        }
+      }
+    }
+
+    package CYGPKG_DEVS_ETH_ARM_INTEGRATOR{
+      display "Integrator board ethernet driver"
+      active_if [CYGPKG_IO_ETH_DRIVERS ]
+      active_if [CYGPKG_HAL_ARM_INTEGRATOR ]
+
+      interface CYGINT_DEVS_ETH_INTEL_I82559_REQUIRED{
+        display "Intel i82559 ethernet driver required"
+      }
+
+      component CYGPKG_DEVS_ETH_ARM_INTEGRATOR_I82559_ETH0{
+        display "Ethernet port 0 driver"
+        implements [CYGHWR_NET_DRIVERS ]
+        implements [CYGHWR_NET_DRIVER_ETH0 ]
+        implements [CYGINT_DEVS_ETH_INTEL_I82559_REQUIRED ]
+        flavor bool 
+
+        option CYGDAT_DEVS_ETH_ARM_INTEGRATOR_I82559_ETH0_NAME{
+          display "Device name for the ETH0 ethernet port 0 driver"
+          flavor data 
+        }
+
+        component CYGSEM_DEVS_ETH_ARM_INTEGRATOR_I82559_ETH0_SET_ESA{
+          display "Set the ethernet station address"
+          flavor bool 
+
+          option CYGDAT_DEVS_ETH_ARM_INTEGRATOR_I82559_ETH0_ESA{
+            display "The ethernet station address"
+            flavor data 
+          }
+        }
+      }
+    }
+  }
+
+  package CYGPKG_POWER{
+    display "Generic power management support"
+
+    option CYGIMP_POWER_PROVIDE_STRINGS{
+      display "Provide a string for every power controller"
+    }
+
+    option CYGIMP_POWER_PROVIDE_POLICY_DATA{
+      display "Reserve space in each power controller for use by the policy manager"
+    }
+
+    component CYGPKG_POWER_THREAD{
+      display "Run a separate thread within the power management package"
+      active_if [CYGPKG_KERNEL ]
+
+      option CYGNUM_POWER_THREAD_STACKSIZE{
+        display "Stack size for the power management thread"
+        flavor data 
+      }
+
+      option CYGNUM_POWER_THREAD_PRIORITY{
+        display "Thread priority to use"
+        active_if [CYGNUM_KERNEL_SCHED_PRIORITIES > 2 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_POWER_OPTIONS{
+      display "Power management build options"
+      flavor none 
+
+      option CYGPKG_POWER_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_POWER_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_POWER_TESTS{
+        display "Power management tests"
+        calculated ["tests/powertest" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_IO_PCI{
+    display "PCI configuration library"
+
+    component CYGPKG_IO_PCI_OPTIONS{
+      display "PCI build options"
+      flavor none 
+
+      option CYGPKG_IO_PCI_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_IO_PCI_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_IO_PCI_DEBUG{
+        display "Enable debugging."
+        flavor bool 
+      }
+
+      option CYGPKG_IO_PCI_TESTS{
+        display "PCI tests"
+        calculated ["tests/pci1 tests/pci2" ]
+        flavor data 
+      }
+
+      option CYGPKG_IO_PCI_CONFIGURE_INTLINE{
+        display "Writeback Interrupt Line register."
+        flavor bool 
+      }
+    }
+  }
+}
+
+package CYGPKG_INFRA{
+  display "Infrastructure"
+
+  component CYGPKG_INFRA_DEBUG{
+    display "Asserts & Tracing"
+
+    component CYGDBG_USE_ASSERTS{
+      display "Use asserts"
+      requires [1 == CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+
+      option CYGDBG_INFRA_DEBUG_PRECONDITIONS{
+        display "Preconditions"
+      }
+
+      option CYGDBG_INFRA_DEBUG_POSTCONDITIONS{
+        display "Postconditions"
+      }
+
+      option CYGDBG_INFRA_DEBUG_LOOP_INVARIANTS{
+        display "Loop invariants"
+      }
+
+      option CYGDBG_INFRA_DEBUG_ASSERT_MESSAGE{
+        display "Use assert text"
+      }
+    }
+
+    component CYGDBG_USE_TRACING{
+      display "Use tracing"
+      requires [1 == CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+
+      option CYGDBG_INFRA_DEBUG_FUNCTION_REPORTS{
+        display "Trace function reports"
+      }
+
+      option CYGDBG_INFRA_DEBUG_TRACE_MESSAGE{
+        display "Use trace text"
+      }
+    }
+
+    interface CYGINT_INFRA_DEBUG_TRACE_IMPL{
+      display "Trace output implementations"
+    }
+
+    option CYGDBG_INFRA_DEBUG_TRACE_ASSERT_NULL{
+      display "Null output"
+      implements [CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+    }
+
+    option CYGDBG_INFRA_DEBUG_TRACE_ASSERT_SIMPLE{
+      display "Simple output"
+      implements [CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+    }
+
+    option CYGDBG_INFRA_DEBUG_TRACE_ASSERT_FANCY{
+      display "Fancy output"
+      implements [CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+    }
+
+    component CYGDBG_INFRA_DEBUG_TRACE_ASSERT_BUFFER{
+      display "Buffered tracing"
+      implements [CYGINT_INFRA_DEBUG_TRACE_IMPL ]
+
+      option CYGDBG_INFRA_DEBUG_TRACE_BUFFER_SIZE{
+        display "Trace buffer size"
+        active_if [CYGDBG_USE_TRACING ]
+        legal_values [5 to 65535 ]
+        flavor data 
+      }
+
+      option CYGDBG_INFRA_DEBUG_TRACE_BUFFER_WRAP{
+        display "Wrap trace buffer when full"
+        active_if [CYGDBG_USE_TRACING ]
+      }
+
+      option CYGDBG_INFRA_DEBUG_TRACE_BUFFER_HALT{
+        display "Halt trace buffer when full"
+        active_if [CYGDBG_USE_TRACING ]
+      }
+
+      option CYGDBG_INFRA_DEBUG_TRACE_BUFFER_PRINT{
+        display "Print trace buffer when full"
+        active_if [CYGDBG_USE_TRACING ]
+      }
+
+      option CYGDBG_INFRA_DEBUG_TRACE_BUFFER_PRINT_ON_ASSERT{
+        display "Print trace buffer on assert fail"
+        active_if [CYGDBG_USE_TRACING ]
+      }
+    }
+
+    option CYGDBG_INFRA_DEBUG_FUNCTION_PSEUDOMACRO{
+      display "Use function names"
+    }
+  }
+
+  component CYGPKG_INFRA_STARTUP{
+    display "Startup options"
+    flavor none 
+
+    option CYGSEM_START_UITRON_COMPATIBILITY{
+      display "Start uITRON subsystem"
+      requires [CYGPKG_UITRON ]
+      active_if [CYGPKG_UITRON ]
+    }
+  }
+
+  option CYGIMP_INFRA_PREFER_SMALL_TO_FAST_MEMCPY{
+    display "Smaller slower memcpy()"
+  }
+
+  option CYGIMP_INFRA_PREFER_SMALL_TO_FAST_MEMSET{
+    display "Smaller slower memset()"
+  }
+
+  option CYGFUN_INFRA_EMPTY_DELETE_FUNCTIONS{
+    display "Provide empty C++ delete functions"
+  }
+
+  option CYGNUM_INFRA_EMPTY_DELETE_THRESHOLD{
+    display "Threshold for valid number of delete calls"
+    active_if [CYGPKG_INFRA_DEBUG ]
+    flavor data 
+  }
+
+  option CYGFUN_INFRA_DUMMY_ABORT{
+    display "Provide dummy abort() function"
+    requires [!CYGINT_ISO_EXIT ]
+  }
+
+  option CYGSEM_INFRA_RESET_ON_TEST_EXIT{
+    display "Reset platform at end of test case execution"
+  }
+
+  option CYGFUN_INFRA_DUMMY_STRLEN{
+    display "Provide dummy strlen() function"
+    requires [!CYGINT_ISO_STRING_STRFUNCS ]
+  }
+
+  option CYGBLD_INFRA_CFLAGS_WARNINGS_AS_ERRORS{
+    display "Make all compiler warnings show as errors"
+    requires [is_substr(CYGBLD_GLOBAL_CFLAGS, " -Werror") ]
+  }
+
+  option CYGBLD_INFRA_CFLAGS_PIPE{
+    display "Make compiler and assembler communicate by pipe"
+    requires [is_substr(CYGBLD_GLOBAL_CFLAGS, " -pipe") ]
+  }
+
+  component CYGPKG_INFRA_OPTIONS{
+    display "Infra build options"
+    flavor none 
+
+    option CYGPKG_INFRA_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_INFRA_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_INFRA_LDFLAGS_REMOVE{
+      display "Suppressed linker flags"
+      flavor data 
+    }
+
+    option CYGPKG_INFRA_LDFLAGS_ADD{
+      display "Additional linker flags"
+      flavor data 
+    }
+
+    component CYGPKG_INFRA_TESTS{
+      display "Infra package tests"
+      calculated ["tests/cxxsupp tests/diag_sprintf1 tests/diag_sprintf2" ]
+      flavor data 
+
+      option CYGNUM_TESTS_RUN_COUNT{
+        display "Number of times a test runs"
+        flavor data 
+      }
+    }
+  }
+}
+
+package CYGPKG_KERNEL{
+  display "eCos kernel"
+
+  component CYGPKG_KERNEL_INTERRUPTS{
+    display "Kernel interrupt handling"
+    flavor none 
+
+    component CYGIMP_KERNEL_INTERRUPTS_DSRS{
+      display "Use delayed service routines (DSRs)"
+
+      interface CYGINT_KERNEL_INTERRUPTS_DSRS{
+        requires [1 == CYGINT_KERNEL_INTERRUPTS_DSRS ]
+      }
+
+      component CYGIMP_KERNEL_INTERRUPTS_DSRS_LIST{
+        display "Use linked lists for DSRs"
+        implements [CYGINT_KERNEL_INTERRUPTS_DSRS ]
+
+        option CYGSEM_KERNEL_INTERRUPTS_DSRS_LIST_FIFO{
+          display "Schedule DSRs in FIFO order"
+          flavor bool 
+        }
+      }
+
+      component CYGIMP_KERNEL_INTERRUPTS_DSRS_TABLE{
+        display "Use fixed-size table for DSRs"
+        implements [CYGINT_KERNEL_INTERRUPTS_DSRS ]
+
+        option CYGNUM_KERNEL_INTERRUPTS_DSRS_TABLE_SIZE{
+          display "Number of entries in fixed-size DSR table"
+          legal_values [2 to 1024 ]
+          flavor data 
+        }
+      }
+
+      option CYGIMP_KERNEL_INTERRUPTS_CHAIN{
+        display "Chain all interrupts together"
+        requires [CYGIMP_HAL_COMMON_INTERRUPTS_CHAIN ]
+      }
+    }
+  }
+
+  component CYGPKG_KERNEL_EXCEPTIONS{
+    display "Exception handling"
+    requires [CYGPKG_HAL_EXCEPTIONS ]
+
+    option CYGSEM_KERNEL_EXCEPTIONS_DECODE{
+      display "Decode exception types in kernel"
+    }
+
+    option CYGSEM_KERNEL_EXCEPTIONS_GLOBAL{
+      display "Use global exception handlers"
+    }
+  }
+
+  component CYGPKG_KERNEL_SCHED{
+    display "Kernel schedulers"
+    flavor none 
+
+    interface CYGINT_KERNEL_SCHEDULER{
+      display "Number of schedulers in this configuration"
+      requires [1 == CYGINT_KERNEL_SCHEDULER ]
+    }
+
+    interface CYGINT_KERNEL_SCHEDULER_UNIQUE_PRIORITIES{
+      display "Non-zero if the active schedule only has unique priorities"
+    }
+
+    component CYGSEM_KERNEL_SCHED_MLQUEUE{
+      display "Multi-level queue scheduler"
+      implements [CYGINT_KERNEL_SCHEDULER ]
+
+      option CYGDBG_KERNEL_TRACE_TIMESLICE{
+        display "Output timeslices when tracing"
+        active_if [CYGDBG_USE_TRACING ]
+        requires [!CYGDBG_INFRA_DEBUG_TRACE_ASSERT_SIMPLE ]
+        requires [!CYGDBG_INFRA_DEBUG_TRACE_ASSERT_FANCY ]
+      }
+    }
+
+    option CYGSEM_KERNEL_SCHED_BITMAP{
+      display "Bitmap scheduler"
+      implements [CYGINT_KERNEL_SCHEDULER ]
+      implements [CYGINT_KERNEL_SCHEDULER_UNIQUE_PRIORITIES ]
+      requires [!CYGPKG_KERNEL_SMP_SUPPORT ]
+    }
+
+    option CYGPRI_KERNEL_SCHED_IMPL_HXX{
+      display "Scheduler header file"
+      calculated [CYGSEM_KERNEL_SCHED_BITMAP ? "<cyg/kernel/bitmap.hxx>" : CYGSEM_KERNEL_SCHED_MLQUEUE ? "<cyg/kernel/mlqueue.hxx>" : CYGSEM_KERNEL_SCHED_LOTTERY ? "<cyg/kernel/lottery.hxx>" : "!!!-- Configuration broken - no scheduler selected --!!!" ]
+      flavor data 
+    }
+
+    component CYGNUM_KERNEL_SCHED_PRIORITIES{
+      display "Number of priority levels"
+      legal_values [1 to 32 ]
+      flavor data 
+
+      option CYGNUM_KERNEL_SCHED_BITMAP_SIZE{
+        display "Bitmap size"
+        calculated ["CYGNUM_KERNEL_SCHED_PRIORITIES" ]
+        flavor data 
+      }
+
+      option CYGIMP_KERNEL_SCHED_SORTED_QUEUES{
+        display "Dequeue highest priority threads first"
+        flavor bool 
+      }
+    }
+
+    component CYGSEM_KERNEL_SCHED_TIMESLICE{
+      display "Scheduler timeslicing"
+      requires [!CYGSEM_KERNEL_SCHED_BITMAP ]
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+
+      option CYGNUM_KERNEL_SCHED_TIMESLICE_TICKS{
+        display "Number of clock ticks between timeslices"
+        legal_values [1 to 65535 ]
+        flavor data 
+      }
+
+      option CYGSEM_KERNEL_SCHED_TIMESLICE_ENABLE{
+        display "Support runtime enable of timeslice per-thread"
+        flavor bool 
+      }
+    }
+
+    component CYGSEM_KERNEL_SCHED_ASR_SUPPORT{
+      display "Enable ASR support"
+      flavor bool 
+
+      option CYGSEM_KERNEL_SCHED_ASR_GLOBAL{
+        display "Make ASR function global"
+        flavor bool 
+      }
+
+      option CYGSEM_KERNEL_SCHED_ASR_DATA_GLOBAL{
+        display "Make ASR data global"
+        flavor bool 
+      }
+    }
+  }
+
+  component CYGPKG_KERNEL_SMP_SUPPORT{
+    display "SMP support"
+    requires [CYGPKG_HAL_SMP_SUPPORT ]
+    flavor bool 
+  }
+
+  component CYGPKG_KERNEL_COUNTERS{
+    display "Counters and clocks"
+    flavor none 
+
+    option CYGVAR_KERNEL_COUNTERS_CLOCK{
+      display "Provide real-time clock"
+      requires [CYGIMP_KERNEL_INTERRUPTS_DSRS ]
+    }
+
+    option CYGNUM_KERNEL_COUNTERS_CLOCK_ISR_PRIORITY{
+      display "Interrupt priority for the real-time clock"
+      active_if [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+      flavor data 
+    }
+
+    interface CYGINT_KERNEL_COUNTERS{
+      requires [1 == CYGINT_KERNEL_COUNTERS ]
+    }
+
+    option CYGIMP_KERNEL_COUNTERS_SINGLE_LIST{
+      display "Implement counters using a single list"
+      implements [CYGINT_KERNEL_COUNTERS ]
+    }
+
+    component CYGIMP_KERNEL_COUNTERS_MULTI_LIST{
+      display "Implement counters using a table of lists"
+      implements [CYGINT_KERNEL_COUNTERS ]
+
+      option CYGNUM_KERNEL_COUNTERS_MULTI_LIST_SIZE{
+        display "Size of counter list table"
+        legal_values [1 to 1024 ]
+        flavor data 
+      }
+    }
+
+    option CYGIMP_KERNEL_COUNTERS_SORT_LIST{
+      display "Sort the counter list"
+    }
+
+    option CYGVAR_KERNEL_COUNTERS_CLOCK_LATENCY{
+      display "Measure real-time [clock] interrupt latency"
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGVAR_KERNEL_COUNTERS_CLOCK_DSR_LATENCY{
+      display "Measure real-time [clock] DSR latency"
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK_LATENCY ]
+    }
+
+    option CYGNUM_KERNEL_COUNTERS_RTC_RESOLUTION{
+      display "RTC resolution"
+      calculated ["{CYGNUM_HAL_RTC_NUMERATOR, CYGNUM_HAL_RTC_DENOMINATOR}" ]
+      flavor data 
+    }
+
+    option CYGNUM_KERNEL_COUNTERS_RTC_PERIOD{
+      display "RTC period"
+      calculated ["CYGNUM_HAL_RTC_PERIOD" ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_KERNEL_THREADS{
+    display "Thread-related options"
+    flavor none 
+
+    option CYGFUN_KERNEL_THREADS_TIMER{
+      display "Allow per-thread timers"
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGVAR_KERNEL_THREADS_NAME{
+      display "Support optional name for each thread"
+    }
+
+    option CYGVAR_KERNEL_THREADS_LIST{
+      display "Keep track of all threads using a linked list"
+    }
+
+    option CYGFUN_KERNEL_THREADS_STACK_LIMIT{
+      display "Keep track of the base of each thread's stack"
+    }
+
+    component CYGFUN_KERNEL_THREADS_STACK_CHECKING{
+      display "Check thread stacks for overflows"
+      active_if [CYGPKG_INFRA_DEBUG ]
+      active_if [CYGDBG_USE_ASSERTS ]
+
+      option CYGFUN_KERNEL_ALL_THREADS_STACK_CHECKING{
+        display "Check all threads whenever possible"
+        requires [CYGVAR_KERNEL_THREADS_LIST ]
+      }
+
+      option CYGNUM_KERNEL_THREADS_STACK_CHECK_DATA_SIZE{
+        display "Signature size in bytes, at stack top and bottom"
+        legal_values [8 to 512 ]
+        flavor data 
+      }
+    }
+
+    component CYGFUN_KERNEL_THREADS_STACK_MEASUREMENT{
+      display "Measure stack usage"
+
+      option CYGDBG_KERNEL_THREADS_STACK_MEASUREMENT_VERBOSE_EXIT{
+        display "Output stack usage on thread exit"
+      }
+    }
+
+    component CYGVAR_KERNEL_THREADS_DATA{
+      display "Support for per-thread data"
+      requires [CYGFUN_KERNEL_THREADS_STACK_LIMIT ]
+
+      option CYGNUM_KERNEL_THREADS_DATA_MAX{
+        display "Number of words of per-thread data"
+        legal_values [4 to 32 ]
+        flavor data 
+      }
+
+      component CYGNUM_KERNEL_THREADS_DATA_ALL{
+        display "Bitmap of preallocated slots of thread data"
+        calculated [15 ]
+        flavor data 
+
+        option CYGNUM_KERNEL_THREADS_DATA_KERNEL{
+          display "Slot 0 preallocated for the kernel"
+          calculated [0 ]
+          flavor data 
+        }
+
+        option CYGNUM_KERNEL_THREADS_DATA_ITRON{
+          display "Slot 1 preallocated for uITRON"
+          calculated [1 ]
+          flavor data 
+        }
+
+        option CYGNUM_KERNEL_THREADS_DATA_ERRNO{
+          display "Slot 2 preallocated for errno"
+          calculated [2 ]
+          flavor data 
+        }
+
+        option CYGNUM_KERNEL_THREADS_DATA_POSIX{
+          display "Slot 3 preallocated for POSIX"
+          calculated [3 ]
+          flavor data 
+        }
+      }
+    }
+
+    component CYGPKG_KERNEL_THREADS_DESTRUCTORS{
+      display "Thread destructors"
+
+      option CYGNUM_KERNEL_THREADS_DESTRUCTORS{
+        display "Number of possible destructors"
+        legal_values [1 to 65535 ]
+        flavor data 
+      }
+
+      option CYGSEM_KERNEL_THREADS_DESTRUCTORS_PER_THREAD{
+        display "Per-thread destructors"
+      }
+    }
+
+    option CYGNUM_KERNEL_THREADS_IDLE_STACK_SIZE{
+      display "Stack size for the idle thread"
+      legal_values [512 to 65536 ]
+      flavor data 
+    }
+
+    option CYGNUM_KERNEL_MAX_SUSPEND_COUNT_ASSERT{
+      display "Maximal suspend count"
+      flavor data 
+    }
+
+    option CYGNUM_KERNEL_MAX_COUNTED_WAKE_COUNT_ASSERT{
+      display "Maximal wake count"
+      flavor data 
+    }
+
+    option CYGIMP_IDLE_THREAD_YIELD{
+      display "Idle thread must always yield"
+      calculated [1 ]
+      active_if [(CYGNUM_KERNEL_SCHED_PRIORITIES == 1) ]
+    }
+  }
+
+  component CYGPKG_KERNEL_SYNCH{
+    display "Synchronization primitives"
+    flavor none 
+
+    component CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL{
+      display "Priority inversion protection protocols"
+      legal_values ["SIMPLE" ]
+      active_if [CYGSEM_KERNEL_SCHED_MLQUEUE ]
+      requires [CYGINT_KERNEL_SCHEDULER_UNIQUE_PRIORITIES == 0 ]
+      flavor booldata 
+
+      option CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_INHERIT{
+        display "Enable priority inheritance protocol"
+        implements [CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT ]
+      }
+
+      component CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_CEILING{
+        display "Enable priority ceiling protocol"
+        implements [CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT ]
+
+        option CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_DEFAULT_PRIORITY{
+          display "Default priority ceiling"
+          legal_values [0 to CYGNUM_KERNEL_SCHED_PRIORITIES - 1 ]
+          active_if [CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_CEILING ]
+          flavor data 
+        }
+      }
+
+      option CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_NONE{
+        display "No priority inversion protocol"
+        implements [CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT ]
+      }
+
+      option CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_DEFAULT{
+        display "Default priority inversion protocol"
+        active_if [CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT > 1 ]
+        legal_values ["INHERIT" "CEILING" "NONE" ]
+        flavor data 
+      }
+
+      option CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_DYNAMIC{
+        display "Specify mutex priority inversion protocol at runtime"
+        active_if [CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT > 1 ]
+      }
+
+      interface CYGINT_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_COUNT{
+        display "Number of protocols selected"
+      }
+    }
+
+    option CYGIMP_MBOX_USE_MBOXT_PLAIN{
+      display "Use mboxt_plain mbox implementation"
+    }
+
+    option CYGMFN_KERNEL_SYNCH_MBOXT_PUT_CAN_WAIT{
+      display "Message box blocking put support"
+    }
+
+    option CYGNUM_KERNEL_SYNCH_MBOX_QUEUE_SIZE{
+      display "Message box queue size"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    option CYGMFN_KERNEL_SYNCH_CONDVAR_TIMED_WAIT{
+      display "Condition variable timed-wait support"
+      requires [CYGFUN_KERNEL_THREADS_TIMER ]
+    }
+
+    option CYGMFN_KERNEL_SYNCH_CONDVAR_WAIT_MUTEX{
+      display "Condition variable explicit mutex wait support"
+    }
+
+    option CYGIMP_KERNEL_SYNCH_MQUEUE_NOT_INLINE{
+      display "Avoid inlines in mqueue implementation"
+    }
+  }
+
+  component CYGPKG_KERNEL_INSTRUMENT{
+    display "Kernel instrumentation"
+    flavor bool 
+
+    option CYGVAR_KERNEL_INSTRUMENT_EXTERNAL_BUFFER{
+      display "Use buffer provided by the application"
+      flavor bool 
+    }
+
+    option CYGNUM_KERNEL_INSTRUMENT_BUFFER_SIZE{
+      display "Size of instrumentation buffer size"
+      legal_values [16 to 0x100000 ]
+      flavor data 
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_BUFFER_WRAP{
+      display "Wrap instrument buffer"
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_FLAGS{
+      display "Perform selective instrumentation"
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_SCHED{
+      display "Instrument the scheduler"
+      active_if [CYGPKG_KERNEL_SCHED ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_THREAD{
+      display "Instrument thread operations"
+      active_if [CYGPKG_KERNEL_THREADS ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_INTR{
+      display "Instrument interrupts"
+      active_if [CYGPKG_KERNEL_INTERRUPTS ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_MUTEX{
+      display "Instrument mutex operations"
+      active_if [CYGPKG_KERNEL_SYNCH ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_CONDVAR{
+      display "Instrument condition variable operations"
+      active_if [CYGPKG_KERNEL_SYNCH ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_BINSEM{
+      display "Instrument binary semaphore operations"
+      active_if [CYGPKG_KERNEL_SYNCH ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_CNTSEM{
+      display "Instrument counting semaphore operations"
+      active_if [CYGPKG_KERNEL_SYNCH ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_MBOXT{
+      display "Instrument message box operations"
+      active_if [CYGPKG_KERNEL_SYNCH ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_CLOCK{
+      display "Instrument clock operations"
+      active_if [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_ALARM{
+      display "Instrument alarm-related operations"
+      active_if [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_SMP{
+      display "Instrument SMP-related operations"
+      active_if [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGDBG_KERNEL_INSTRUMENT_USER{
+      display "Support application-level instrumentation"
+    }
+
+    component CYGDBG_KERNEL_INSTRUMENT_MSGS{
+      display "Print user friendly instrument messages"
+
+      option CYGDBG_KERNEL_INSTRUMENT_MSGS_BUILD_HEADERFILE{
+        display "Rebuild the header file"
+      }
+
+      component CYGDBG_KERNEL_INSTRUMENT_BUILD_HOST_DUMP{
+        display "Build the host tool to print out a dump"
+      }
+    }
+  }
+
+  component CYGPKG_KERNEL_DEBUG{
+    display "Source-level debugging support"
+    flavor none 
+
+    option CYGDBG_KERNEL_DEBUG_GDB_THREAD_SUPPORT{
+      display "Include GDB multi-threading debug support"
+      requires [CYGVAR_KERNEL_THREADS_LIST ]
+      requires [CYGDBG_HAL_DEBUG_GDB_THREAD_SUPPORT ]
+    }
+  }
+
+  component CYGPKG_KERNEL_API{
+    display "Kernel APIs"
+    flavor none 
+
+    option CYGFUN_KERNEL_API_C{
+      display "Provide C API"
+    }
+  }
+
+  component CYGPKG_KERNEL_OPTIONS{
+    display "Kernel build options"
+    flavor none 
+
+    option CYGPKG_KERNEL_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_KERNEL_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_KERNEL_TESTS{
+      display "Kernel tests"
+      calculated ["tests/bin_sem0 tests/bin_sem1 tests/bin_sem2 tests/bin_sem3 tests/clock0 tests/clock1 tests/clockcnv tests/clocktruth tests/cnt_sem0 tests/cnt_sem1 tests/except1 tests/flag0 tests/flag1 tests/intr0 tests/kill tests/mbox1 tests/mqueue1 tests/mutex0 tests/mutex1 tests/mutex2 tests/mutex3 tests/release tests/sched1 tests/sync2 tests/sync3 tests/thread0 tests/thread1 tests/thread2" . ((CYGFUN_KERNEL_API_C) ? " tests/kclock0 tests/kclock1 tests/kexcept1 tests/kflag0 tests/kflag1 tests/kintr0 tests/klock tests/kmbox1 tests/kmutex0 tests/kmutex1 tests/kmutex3 tests/kmutex4 tests/ksched1 tests/ksem0 tests/ksem1 tests/kthread0 tests/kthread1 tests/stress_threads tests/thread_gdb tests/timeslice tests/timeslice2 tests/tm_basic tests/fptest tests/kalarm0" : "") . ((!CYGPKG_INFRA_DEBUG && !CYGPKG_KERNEL_INSTRUMENT && CYGFUN_KERNEL_API_C) ? " tests/dhrystone" : "") . ((CYGPKG_KERNEL_SMP_SUPPORT && CYGFUN_KERNEL_API_C) ? " tests/smp" : "") . ((!CYGINT_HAL_TESTS_NO_CACHES && CYGFUN_KERNEL_API_C) ? " tests/kcache1 tests/kcache2" : "") ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_MEMALLOC{
+  display "Dynamic memory allocation"
+
+  component CYGPKG_MEMALLOC_ALLOCATORS{
+    display "Memory allocator implementations"
+    flavor none 
+
+    component CYGPKG_MEMALLOC_ALLOCATOR_FIXED{
+      display "Fixed block allocator"
+      flavor none 
+
+      option CYGSEM_MEMALLOC_ALLOCATOR_FIXED_THREADAWARE{
+        display "Make thread safe"
+        active_if [CYGPKG_KERNEL ]
+      }
+    }
+
+    component CYGPKG_MEMALLOC_ALLOCATOR_VARIABLE{
+      display "Simple variable block allocator"
+      flavor none 
+
+      option CYGSEM_MEMALLOC_ALLOCATOR_VARIABLE_THREADAWARE{
+        display "Make thread safe"
+        active_if [CYGPKG_KERNEL ]
+      }
+
+      option CYGSEM_MEMALLOC_ALLOCATOR_VARIABLE_COALESCE{
+        display "Coalesce memory"
+      }
+    }
+
+    component CYGPKG_MEMALLOC_ALLOCATOR_DLMALLOC{
+      display "Doug Lea's malloc"
+      flavor none 
+
+      option CYGDBG_MEMALLOC_ALLOCATOR_DLMALLOC_DEBUG{
+        display "Debug build"
+        requires [CYGDBG_USE_ASSERTS ]
+      }
+
+      option CYGIMP_MEMALLOC_ALLOCATOR_DLMALLOC_THREADAWARE{
+        display "Make thread safe"
+        active_if [CYGPKG_KERNEL ]
+        requires [CYGPKG_KERNEL ]
+      }
+
+      option CYGIMP_MEMALLOC_ALLOCATOR_DLMALLOC_SAFE_MULTIPLE{
+        display "Support more than one instance"
+      }
+
+      option CYGIMP_MEMALLOC_ALLOCATOR_DLMALLOC_USE_MEMCPY{
+        display "Use system memmove() and memset()"
+        requires [CYGPKG_ISOINFRA ]
+        requires [CYGINT_ISO_STRING_MEMFUNCS ]
+      }
+
+      option CYGNUM_MEMALLOC_ALLOCATOR_DLMALLOC_ALIGNMENT{
+        display "Minimum alignment of allocated blocks"
+        legal_values [3 to 10 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_MEMALLOC_ALLOCATOR_SEPMETA{
+      display "Variable block allocator with separate metadata"
+      flavor none 
+
+      option CYGSEM_MEMALLOC_ALLOCATOR_SEPMETA_THREADAWARE{
+        display "Make thread safe"
+        active_if [CYGPKG_KERNEL ]
+      }
+    }
+  }
+
+  option CYGFUN_MEMALLOC_KAPI{
+    display "Kernel C API support for memory allocation"
+    active_if [CYGPKG_KERNEL ]
+  }
+
+  option CYGSEM_MEMALLOC_MALLOC_ZERO_RETURNS_NULL{
+    display "malloc(0) returns NULL"
+  }
+
+  option CYGSEM_MEMALLOC_INVOKE_OUT_OF_MEMORY{
+    display "Breakpoint site when running out of memory"
+  }
+
+  component CYGPKG_MEMALLOC_MALLOC_ALLOCATORS{
+    display "malloc() and supporting allocators"
+    active_if [CYGPKG_ISOINFRA ]
+    implements [CYGINT_ISO_MALLOC ]
+    implements [CYGINT_ISO_MALLINFO ]
+    flavor bool 
+
+    component CYGBLD_MEMALLOC_MALLOC_EXTERNAL_HEAP_H{
+      display "Use external heap definition"
+      flavor booldata 
+    }
+
+    component CYGBLD_MEMALLOC_MALLOC_EXTERNAL_JOIN_H{
+      display "Use external implementation of joining multiple heaps"
+      flavor booldata 
+    }
+
+    interface CYGINT_MEMALLOC_MALLOC_ALLOCATORS{
+      display "malloc() allocator implementations"
+      requires [CYGINT_MEMALLOC_MALLOC_ALLOCATORS == 1 ]
+    }
+
+    option CYGBLD_MEMALLOC_MALLOC_IMPLEMENTATION_HEADER{
+      display "malloc() implementation instantiation data"
+      flavor data 
+    }
+
+    option CYGIMP_MEMALLOC_MALLOC_VARIABLE_SIMPLE{
+      display "Simple variable block implementation"
+      implements [CYGINT_MEMALLOC_MALLOC_ALLOCATORS ]
+      requires [CYGBLD_MEMALLOC_MALLOC_IMPLEMENTATION_HEADER == "<cyg/memalloc/memvar.hxx>" ]
+      requires [CYGSEM_MEMALLOC_ALLOCATOR_VARIABLE_COALESCE ]
+    }
+
+    option CYGIMP_MEMALLOC_MALLOC_DLMALLOC{
+      display "Doug Lea's malloc implementation"
+      implements [CYGINT_MEMALLOC_MALLOC_ALLOCATORS ]
+      requires [CYGBLD_MEMALLOC_MALLOC_IMPLEMENTATION_HEADER == "<cyg/memalloc/dlmalloc.hxx>" ]
+    }
+  }
+
+  option CYGNUM_MEMALLOC_FALLBACK_MALLOC_POOL_SIZE{
+    display "Size of the fallback dynamic memory pool in bytes"
+    legal_values [32 to 0x7fffffff ]
+    flavor data 
+  }
+
+  component CYGPKG_MEMALLOC_OPTIONS{
+    display "Common memory allocator package build options"
+    flavor none 
+
+    option CYGPKG_MEMALLOC_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_MEMALLOC_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_MEMALLOC_TESTS{
+      display "Tests"
+      calculated ["tests/dlmalloc1 tests/dlmalloc2 tests/heaptest tests/kmemfix1 tests/kmemvar1 tests/malloc1 tests/malloc2 tests/malloc3 tests/malloc4 tests/memfix1 tests/memfix2 tests/memvar1 tests/memvar2 tests/realloc tests/sepmeta1 tests/sepmeta2" ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_ISOINFRA{
+  display "ISO C and POSIX infrastructure"
+
+  component CYGPKG_ISO_STARTUP{
+    display "Startup and termination"
+    flavor none 
+
+    interface CYGINT_ISO_MAIN_STARTUP{
+      display "main() startup implementations"
+      requires [1 >= CYGINT_ISO_MAIN_STARTUP ]
+    }
+
+    interface CYGINT_ISO_ENVIRON{
+      display "environ implementations"
+      requires [1 >= CYGINT_ISO_ENVIRON ]
+    }
+  }
+
+  component CYGPKG_ISO_CTYPE_H{
+    display "ctype.h functions"
+    flavor none 
+
+    interface CYGINT_ISO_CTYPE{
+      display "Number of implementations of ctype functions"
+      requires [1 >= CYGINT_ISO_CTYPE ]
+    }
+
+    option CYGBLD_ISO_CTYPE_HEADER{
+      display "Ctype implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_ERRNO{
+    display "Error handling"
+    flavor none 
+
+    interface CYGINT_ISO_ERRNO_CODES{
+      display "Number of implementations of error codes"
+      requires [1 >= CYGINT_ISO_ERRNO_CODES ]
+    }
+
+    option CYGBLD_ISO_ERRNO_CODES_HEADER{
+      display "Error codes implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_ERRNO{
+      display "Number of implementations of errno variable"
+      requires [1 >= CYGINT_ISO_ERRNO ]
+    }
+
+    option CYGBLD_ISO_ERRNO_HEADER{
+      display "errno variable implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_LOCALE{
+    display "Locale-related functions"
+    flavor none 
+
+    interface CYGINT_ISO_LOCALE{
+      display "Number of implementations of locale functions"
+      requires [1 >= CYGINT_ISO_LOCALE ]
+    }
+
+    option CYGBLD_ISO_LOCALE_HEADER{
+      display "Locale implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_STDIO{
+    display "Standard I/O-related functionality"
+    flavor none 
+
+    interface CYGINT_ISO_STDIO_FILETYPES{
+      display "Number of implementations of stdio file types"
+      requires [1 >= CYGINT_ISO_STDIO_FILETYPES ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_FILETYPES_HEADER{
+      display "Stdio file types implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_STREAMS{
+      display "Stdio standard streams implementations"
+      requires [1 >= CYGINT_ISO_STDIO_STREAMS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_STREAMS_HEADER{
+      display "Stdio standard streams implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_FILEOPS{
+      display "Number of implementations of stdio file operations"
+      requires [1 >= CYGINT_ISO_STDIO_FILEOPS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_FILEOPS_HEADER{
+      display "Stdio file operations implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_FILEACCESS{
+      display "Number of implementations of stdio file access  functionals"
+      requires [1 >= CYGINT_ISO_STDIO_FILEACCESS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_FILEACCESS_HEADER{
+      display "Stdio file access implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_FORMATTED_IO{
+      display "Number of implementations of stdio formatted I/O"
+      requires [1 >= CYGINT_ISO_STDIO_FORMATTED_IO ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_FORMATTED_IO_HEADER{
+      display "Stdio formatted I/O implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_CHAR_IO{
+      display "Number of implementations of stdio character I/O"
+      requires [1 >= CYGINT_ISO_STDIO_CHAR_IO ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_CHAR_IO_HEADER{
+      display "Stdio character I/O implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_DIRECT_IO{
+      display "Number of implementations of stdio direct I/O"
+      requires [1 >= CYGINT_ISO_STDIO_DIRECT_IO ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_DIRECT_IO_HEADER{
+      display "Stdio direct I/O implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_FILEPOS{
+      display "Number of implementations of stdio file positioning"
+      requires [1 >= CYGINT_ISO_STDIO_FILEPOS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_FILEPOS_HEADER{
+      display "Stdio file positioning implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_ERROR{
+      display "Number of implementations of stdio error handling"
+      requires [1 >= CYGINT_ISO_STDIO_ERROR ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_ERROR_HEADER{
+      display "Stdio error handling implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDIO_POSIX_FDFUNCS{
+      display "POSIX fd-related function implementations"
+      requires [1 >= CYGINT_ISO_STDIO_POSIX_FDFUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDIO_POSIX_FDFUNCS_HEADER{
+      display "POSIX fd-related function implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_STDLIB{
+    display "Standard general utility functions"
+    flavor none 
+
+    interface CYGINT_ISO_STDLIB_STRCONV{
+      display "String conversion function implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_STRCONV ]
+    }
+
+    option CYGBLD_ISO_STDLIB_STRCONV_HEADER{
+      display "String conversion function implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDLIB_STRCONV_FLOAT{
+      display "String to FP conversion function implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_STRCONV_FLOAT ]
+    }
+
+    option CYGBLD_ISO_STDLIB_STRCONV_FLOAT_HEADER{
+      display "String to FP conversion function implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_RAND{
+      display "Random number generator implementations"
+      requires [1 >= CYGINT_ISO_RAND ]
+    }
+
+    option CYGBLD_ISO_RAND_HEADER{
+      display "Random number generator implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_MALLOC{
+      display "Malloc implementations"
+      requires [1 >= CYGINT_ISO_MALLOC ]
+    }
+
+    option CYGBLD_ISO_MALLOC_HEADER{
+      display "Malloc implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_MALLINFO{
+      display "Mallinfo() implementations"
+      requires [1 >= CYGINT_ISO_MALLINFO ]
+    }
+
+    option CYGBLD_ISO_MALLINFO_HEADER{
+      display "Mallinfo() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_EXIT{
+      display "Program exit functionality implementations"
+      requires [1 >= CYGINT_ISO_EXIT ]
+    }
+
+    option CYGBLD_ISO_EXIT_HEADER{
+      display "Program exit functionality implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDLIB_ENVIRON{
+      display "Program environment implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_ENVIRON ]
+    }
+
+    option CYGBLD_ISO_STDLIB_ENVIRON_HEADER{
+      display "Program environment implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDLIB_SYSTEM{
+      display "system() implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_SYSTEM ]
+    }
+
+    option CYGBLD_ISO_STDLIB_SYSTEM_HEADER{
+      display "system() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_BSEARCH{
+      display "bsearch() implementations"
+      requires [1 >= CYGINT_ISO_BSEARCH ]
+    }
+
+    option CYGBLD_ISO_BSEARCH_HEADER{
+      display "bsearch() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_QSORT{
+      display "qsort() implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_QSORT ]
+    }
+
+    option CYGBLD_ISO_QSORT_HEADER{
+      display "qsort() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_ABS{
+      display "abs()/labs() implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_ABS ]
+    }
+
+    option CYGBLD_ISO_STDLIB_ABS_HEADER{
+      display "abs()/labs() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_DIV{
+      display "div()/ldiv() implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_DIV ]
+    }
+
+    option CYGBLD_ISO_STDLIB_DIV_HEADER{
+      display "div()/ldiv() implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STDLIB_MB_CUR_MAX_HEADER{
+      display "Header defining the implementation's MB_CUR_MAX"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STDLIB_MULTIBYTE{
+      display "Multibyte character implementations"
+      requires [1 >= CYGINT_ISO_STDLIB_MULTIBYTE ]
+    }
+
+    option CYGBLD_ISO_STDLIB_MULTIBYTE_HEADER{
+      display "Multibyte character implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_STRING{
+    display "String functions"
+    flavor none 
+
+    interface CYGINT_ISO_STRERROR{
+      display "Number of implementations of strerror() function"
+      requires [1 >= CYGINT_ISO_STRERROR ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRERROR_HEADER{
+      display "strerror() implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_MEMCPY_HEADER{
+      display "memcpy() implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_MEMSET_HEADER{
+      display "memset() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STRTOK_R{
+      display "Number of implementations of strtok_r() function"
+      requires [1 >= CYGINT_ISO_STRTOK_R ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRTOK_R_HEADER{
+      display "strtok_r() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STRING_LOCALE_FUNCS{
+      display "Number of implementations of locale-specific string  functions"
+      requires [1 >= CYGINT_ISO_STRING_LOCALE_FUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRING_LOCALE_FUNCS_HEADER{
+      display "Locale-specific string functions' implementation  header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STRING_BSD_FUNCS{
+      display "Number of implementations of BSD string functions"
+      requires [1 >= CYGINT_ISO_STRING_BSD_FUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRING_BSD_FUNCS_HEADER{
+      display "BSD string functions' implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STRING_MEMFUNCS{
+      display "Number of implementations of other mem*() functions"
+      requires [1 >= CYGINT_ISO_STRING_MEMFUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRING_MEMFUNCS_HEADER{
+      display "Other mem*() functions' implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_STRING_STRFUNCS{
+      display "Number of implementations of other ISO C str*()  functions"
+      requires [1 >= CYGINT_ISO_STRING_STRFUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRING_STRFUNCS_HEADER{
+      display "Other ISO C str*() functions' implementation  header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_TIME{
+    display "Clock and time functionality"
+    flavor none 
+
+    option CYGBLD_ISO_TIME_T_HEADER{
+      display "time_t implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_CLOCK_T_HEADER{
+      display "clock_t implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_STRUCTTIMEVAL_HEADER{
+      display "struct timeval implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_FNMATCH_HEADER{
+      display "fnmatch implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POSIX_TIMER_TYPES{
+      display "Number of implementations of POSIX timer types"
+      requires [1 >= CYGINT_ISO_POSIX_TIMER_TYPES ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_TIMER_TYPES_HEADER{
+      display "POSIX timer types implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POSIX_CLOCK_TYPES{
+      display "Number of implementations of POSIX clock types"
+      requires [1 >= CYGINT_ISO_POSIX_CLOCK_TYPES ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_CLOCK_TYPES_HEADER{
+      display "POSIX clock types implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_C_TIME_TYPES{
+      display "Number of implementations of ISO C types"
+      requires [1 >= CYGINT_ISO_C_TIME_TYPES ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_C_TIME_TYPES_HEADER{
+      display "ISO C time types implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POSIX_TIMERS{
+      display "Number of implementations of POSIX timers"
+      requires [1 >= CYGINT_ISO_POSIX_TIMERS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_TIMERS_HEADER{
+      display "POSIX timer implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POSIX_CLOCKS{
+      display "Number of implementations of POSIX clocks"
+      requires [1 >= CYGINT_ISO_POSIX_CLOCKS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_CLOCKS_HEADER{
+      display "POSIX clocks implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_C_CLOCK_FUNCS{
+      display "Number of implementations of ISO C clock functions"
+      requires [1 >= CYGINT_ISO_C_CLOCK_FUNCS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_C_CLOCK_FUNCS_HEADER{
+      display "ISO C clock functions' implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_TZSET{
+      display "Number of implementations of tzset() function"
+      requires [1 >= CYGINT_ISO_TZSET ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_TZSET_HEADER{
+      display "tzset() implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_SIGNAL{
+    display "Signal functionality"
+    flavor none 
+
+    interface CYGINT_ISO_SIGNAL_NUMBERS{
+      display "Number of implementations of signal numbers"
+      requires [1 >= CYGINT_ISO_SIGNAL_NUMBERS ]
+    }
+
+    option CYGBLD_ISO_SIGNAL_NUMBERS_HEADER{
+      display "Signal numbering implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_SIGNAL_IMPL{
+      display "Number of signal implementations"
+      requires [1 >= CYGINT_ISO_SIGNAL_IMPL ]
+    }
+
+    option CYGBLD_ISO_SIGNAL_IMPL_HEADER{
+      display "Signals implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_POSIX_REALTIME_SIGNALS{
+      display "POSIX real time signals feature test macro"
+      requires [1 >= CYGINT_POSIX_REALTIME_SIGNALS ]
+    }
+  }
+
+  component CYGPKG_ISO_SETJMP{
+    display "Non-local jumps functionality"
+    flavor none 
+
+    interface CYGINT_ISO_SETJMP{
+      display "setjmp() / longjmp() implementations"
+      requires [1 >= CYGINT_ISO_SETJMP ]
+    }
+
+    option CYGBLD_ISO_SETJMP_HEADER{
+      display "setjmp() / longjmp() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_SIGSETJMP{
+      display "sigsetjmp() / siglongjmp() implementations"
+      requires [1 >= CYGINT_ISO_SIGSETJMP ]
+    }
+
+    option CYGBLD_ISO_SIGSETJMP_HEADER{
+      display "sigsetjmp() / siglongjmp() implementation header"
+      flavor booldata 
+    }
+  }
+
+  option CYGBLD_ISO_ASSERT_HEADER{
+    display "Assertions implementation header"
+    flavor booldata 
+  }
+
+  component CYGPKG_ISO_POSIX_FCNTL{
+    display "POSIX file control"
+    flavor none 
+
+    option CYGBLD_ISO_OFLAG_HEADER{
+      display "POSIX open flags implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_FCNTL{
+      display "POSIX fcntl() implementations"
+      requires [1 >= CYGINT_ISO_FCNTL ]
+    }
+
+    option CYGBLD_ISO_FCNTL_HEADER{
+      display "POSIX fcntl() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_OPEN{
+      display "POSIX file open implementations"
+      requires [1 >= CYGINT_ISO_OPEN ]
+    }
+
+    option CYGBLD_ISO_OPEN_HEADER{
+      display "POSIX file open implementation header"
+      flavor booldata 
+    }
+  }
+
+  option CYGBLD_ISO_STAT_DEFS_HEADER{
+    display "<sys/stat.h> definitions implementation header"
+    flavor booldata 
+  }
+
+  interface CYGINT_ISO_DIRENT{
+    display "POSIX directory reading implementation"
+    requires [1 >= CYGINT_ISO_DIRENT ]
+  }
+
+  option CYGBLD_ISO_DIRENT_HEADER{
+    display "<dirent.h> definitions implementation header"
+    flavor booldata 
+  }
+
+  component CYGPKG_ISO_POSIX_TYPES{
+    display "POSIX <sys/types.h> contents"
+    flavor none 
+
+    interface CYGINT_ISO_PTHREADTYPES{
+      display "POSIX thread types implementations"
+      requires [1 >= CYGINT_ISO_PTHREADTYPES ]
+    }
+
+    option CYGBLD_ISO_PTHREADTYPES_HEADER{
+      display "POSIX thread types implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_PMUTEXTYPES{
+      display "POSIX mutex types implementations"
+      requires [1 >= CYGINT_ISO_PTHREADTYPES ]
+    }
+
+    option CYGBLD_ISO_PMUTEXTYPES_HEADER{
+      display "POSIX mutex types implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_SSIZE_T_HEADER{
+      display "ssize_t implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_FSTYPES_HEADER{
+      display "Filesystem types implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_SCHEDTYPES_HEADER{
+      display "gid_t, pid_t, uid_t implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_EXTRA_TYPES{
+    display "Non-POSIX <sys/types.h> contents"
+    flavor none 
+
+    interface CYGINT_ISO_BSDTYPES{
+      display "BSD compatible types"
+      requires [1 >= CYGINT_ISO_BSDTYPES ]
+    }
+
+    option CYGBLD_ISO_BSDTYPES_HEADER{
+      display "BSD types header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_UTSNAME{
+    display "Utsname structure"
+    flavor none 
+
+    option CYGBLD_ISO_UTSNAME_HEADER{
+      display "Utsname header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_SCHED{
+    display "POSIX scheduler"
+    flavor none 
+
+    interface CYGINT_ISO_SCHED_IMPL{
+      display "POSIX scheduler implementations"
+      requires [1 >= CYGINT_ISO_SCHED_IMPL ]
+    }
+
+    option CYGBLD_ISO_SCHED_IMPL_HEADER{
+      display "POSIX scheduler implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_SEMAPHORES{
+    display "POSIX semaphores"
+    flavor none 
+
+    interface CYGINT_ISO_SEMAPHORES{
+      display "POSIX semaphore implementations"
+      requires [1 >= CYGINT_ISO_SEMAPHORES ]
+    }
+
+    option CYGBLD_ISO_SEMAPHORES_HEADER{
+      display "POSIX semaphore implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_MQUEUE{
+    display "POSIX message queues"
+    flavor none 
+
+    interface CYGINT_ISO_MQUEUE{
+      display "Implementations"
+      requires [1 >= CYGINT_ISO_MQUEUE ]
+    }
+
+    option CYGBLD_ISO_MQUEUE_HEADER{
+      display "Implementation header"
+      flavor booldata 
+    }
+
+    option CYGNUM_ISO_MQUEUE_OPEN_MAX{
+      display "Maximum number of open message queues"
+      active_if [CYGINT_ISO_MQUEUE ]
+      flavor booldata 
+    }
+
+    option CYGNUM_ISO_MQUEUE_PRIO_MAX{
+      display "Maximum number of message priorities"
+      active_if [CYGINT_ISO_MQUEUE ]
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_PTHREAD{
+    display "POSIX threads"
+    flavor none 
+
+    interface CYGINT_ISO_PTHREAD_IMPL{
+      display "POSIX pthread implementations"
+      requires [1 >= CYGINT_ISO_PTHREAD_IMPL ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_PTHREAD_IMPL_HEADER{
+      display "POSIX pthread implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_PTHREAD_MUTEX{
+      display "POSIX mutex/cond var implementations"
+      requires [1 >= CYGINT_ISO_PTHREAD_MUTEX ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_PTHREAD_MUTEX_HEADER{
+      display "POSIX mutex/cond var implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_LIMITS{
+    display "Limits"
+    flavor none 
+
+    interface CYGINT_ISO_POSIX_LIMITS{
+      display "POSIX pthread limits implementations"
+      requires [1 >= CYGINT_ISO_POSIX_LIMITS ]
+    }
+
+    option CYGBLD_ISO_POSIX_LIMITS_HEADER{
+      display "POSIX pthread limits implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_OPEN_MAX_HEADER{
+      display "OPEN_MAX implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_LINK_MAX_HEADER{
+      display "LINK_MAX implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_NAME_MAX_HEADER{
+      display "NAME_MAX implementation header"
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_PATH_MAX_HEADER{
+      display "PATH_MAX implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_TERMIOS{
+    display "POSIX termios"
+    flavor none 
+
+    interface CYGINT_ISO_TERMIOS{
+      display "POSIX termios implementations"
+      requires [1 >= CYGINT_ISO_TERMIOS ]
+    }
+
+    option CYGBLD_ISO_TERMIOS_HEADER{
+      display "POSIX termios implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_DLFCN{
+    display "Dynamic load API"
+    flavor none 
+
+    interface CYGINT_ISO_DLFCN{
+      display "Dynamic load implementations"
+      requires [1 >= CYGINT_ISO_DLFCN ]
+    }
+
+    option CYGBLD_ISO_DLFCN_HEADER{
+      display "Dynamic load implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_UNISTD{
+    display "UNIX standard functions"
+    flavor none 
+
+    interface CYGINT_ISO_POSIX_TIMER_OPS{
+      display "POSIX timer operations implementations"
+      requires [1 >= CYGINT_ISO_POSIX_TIMER_OPS ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_TIMER_OPS_HEADER{
+      display "POSIX timer operations implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POSIX_SLEEP{
+      display "POSIX sleep() implementations"
+      requires [1 >= CYGINT_ISO_POSIX_SLEEP ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POSIX_SLEEP_HEADER{
+      display "POSIX sleep() implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_SELECT{
+    display "select()/poll() functions"
+    flavor none 
+
+    interface CYGINT_ISO_SELECT{
+      display "select() implementations"
+      requires [1 >= CYGINT_ISO_SELECT ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_SELECT_HEADER{
+      display "select() implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_POLL{
+      display "poll() implementations"
+      requires [1 >= CYGINT_ISO_POLL ]
+      flavor booldata 
+    }
+
+    option CYGBLD_ISO_POLL_HEADER{
+      display "poll() implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISO_NETDB{
+    display "NetDB utility functions"
+    flavor none 
+
+    interface CYGINT_ISO_DNS{
+      display "DNS implementations"
+      requires [1 >= CYGINT_ISO_DNS ]
+      flavor bool 
+    }
+
+    option CYGBLD_ISO_DNS_HEADER{
+      display "DNS implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_NETDB_PROTO{
+      display "Protocol network database implementations"
+      requires [1 >= CYGINT_ISO_NETDB_PROTO ]
+      flavor bool 
+    }
+
+    option CYGBLD_ISO_NETDB_PROTO_HEADER{
+      display "Protocol network database implementation header"
+      flavor booldata 
+    }
+
+    interface CYGINT_ISO_NETDB_SERV{
+      display "Services network database implementations"
+      requires [1 >= CYGINT_ISO_NETDB_SERV ]
+      flavor bool 
+    }
+
+    option CYGBLD_ISO_NETDB_SERV_HEADER{
+      display "Services network database implementation header"
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_ISOINFRA_OPTIONS{
+    display "Build options"
+    flavor none 
+
+    option CYGPKG_ISOINFRA_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_ISOINFRA_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_LIBC{
+  display "ISO C library"
+
+  package CYGPKG_LIBC_I18N{
+    display "ISO C library internationalization functions"
+    implements [CYGINT_ISO_LOCALE ]
+    implements [CYGINT_ISO_CTYPE ]
+    implements [CYGINT_ISO_STDLIB_MULTIBYTE ]
+    requires [CYGPKG_ISOINFRA ]
+
+    component CYGPKG_LIBC_I18N_LOCALES{
+      display "Supported locales"
+      flavor none 
+
+      interface CYGINT_LIBC_I18N_MB_REQUIRED{
+        display "Support for multiple locales required"
+        requires [CYGBLD_ISO_STDLIB_MB_CUR_MAX_HEADER == "<cyg/libc/i18n/mb.h>" ]
+        flavor booldata 
+      }
+
+      option CYGFUN_LIBC_I18N_LOCALE_C_SJIS{
+        display "C-SJIS locale support"
+        implements [CYGINT_LIBC_I18N_MB_REQUIRED ]
+      }
+
+      option CYGFUN_LIBC_I18N_LOCALE_C_JIS{
+        display "C-JIS locale support"
+        implements [CYGINT_LIBC_I18N_MB_REQUIRED ]
+      }
+
+      option CYGFUN_LIBC_I18N_LOCALE_C_EUCJP{
+        display "C-EUCJP locale support"
+        implements [CYGINT_LIBC_I18N_MB_REQUIRED ]
+      }
+    }
+
+    option CYGPKG_LIBC_I18N_NEWLIB_CTYPE{
+      display "Newlib's ctype implementation"
+      requires [CYGBLD_ISO_CTYPE_HEADER == "<cyg/libc/i18n/newlibctype.h>" ]
+    }
+
+    option CYGSEM_LIBC_I18N_PER_THREAD_MB{
+      display "Per-thread multibyte state"
+      active_if [CYGPKG_KERNEL ]
+      requires [CYGVAR_KERNEL_THREADS_DATA ]
+    }
+
+    option CYGNUM_LIBC_I18N_MAX_LOCALE_NAME_SIZE{
+      display "Size of locale name strings"
+      legal_values [(CYGFUN_LIBC_I18N_LOCALE_C_EUCJP ? 8 : (CYGFUN_LIBC_I18N_LOCALE_C_SJIS ? 7 : (CYGFUN_LIBC_I18N_LOCALE_C_JIS ? 6 : 2))) to 0x7fffffff ]
+      flavor data 
+    }
+
+    option CYGIMP_LIBC_I18N_CTYPE_INLINES{
+      display "Inline versions of <ctype.h> functions"
+      requires [CYGBLD_ISO_CTYPE_HEADER == "<cyg/libc/i18n/ctype.inl>" ]
+    }
+
+    component CYGPKG_LIBC_I18N_OPTIONS{
+      display "C library i18n functions build options"
+      flavor none 
+
+      option CYGPKG_LIBC_I18N_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_I18N_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_I18N_TESTS{
+        display "C library i18n function tests"
+        calculated ["tests/ctype tests/setlocale tests/i18nmb" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_SETJMP{
+    display "ISO C library setjmp/longjmp functions"
+    requires [CYGPKG_ISOINFRA ]
+    implements [CYGINT_ISO_SETJMP ]
+    requires [CYGBLD_ISO_SETJMP_HEADER == "<cyg/libc/setjmp/setjmp.h>" ]
+
+    component CYGPKG_LIBC_SETJMP_OPTIONS{
+      display "C library setjmp build options"
+      flavor none 
+
+      option CYGPKG_LIBC_SETJMP_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_SETJMP_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_SETJMP_TESTS{
+        display "C library setjmp tests"
+        calculated ["tests/setjmp" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_STARTUP{
+    display "ISO environment startup/termination"
+    requires [CYGPKG_ISOINFRA ]
+    requires [CYGINT_LIBC_STARTUP_CONTEXT == 1 ]
+    implements [CYGINT_ISO_EXIT ]
+    implements [CYGINT_ISO_MAIN_STARTUP ]
+    implements [CYGINT_ISO_ENVIRON ]
+
+    interface CYGINT_LIBC_STARTUP_EXTERNAL_INVOKE_MAIN_POSSIBLE{
+      display "main() can be invoked elsewhere"
+      flavor bool 
+    }
+
+    option CYGDAT_LIBC_ARGUMENTS{
+      display "Arguments to main()"
+      flavor data 
+    }
+
+    component CYGPKG_LIBC_STARTUP_CONTEXT{
+      display "Startup context for main()"
+      flavor none 
+
+      interface CYGINT_LIBC_STARTUP_CONTEXT{
+        display "Startup context implementors"
+      }
+
+      option CYGSEM_LIBC_STARTUP_MAIN_INITCONTEXT{
+        display "Invoked from initialization context"
+        implements [CYGINT_LIBC_STARTUP_CONTEXT ]
+        implements [CYGINT_LIBC_STARTUP_MAIN_NO_STACK_SIZE ]
+        flavor bool 
+      }
+
+      component CYGSEM_LIBC_STARTUP_MAIN_THREAD{
+        display "Invoked as eCos thread"
+        requires [CYGPKG_KERNEL ]
+        implements [CYGINT_LIBC_STARTUP_CONTEXT ]
+        flavor bool 
+
+        option CYGSEM_LIBC_MAIN_STACK_FROM_SYSTEM{
+          display "System provides stack for main()'s thread"
+          flavor bool 
+        }
+
+        option CYGNUM_LIBC_MAIN_THREAD_PRIORITY{
+          display "Priority of main()'s thread"
+          legal_values [0 to 0x7fffffff ]
+          flavor data 
+        }
+      }
+
+      option CYGSEM_LIBC_STARTUP_MAIN_OTHER{
+        display "Invoked elsewhere"
+        requires [CYGINT_LIBC_STARTUP_EXTERNAL_INVOKE_MAIN_POSSIBLE ]
+        implements [CYGINT_LIBC_STARTUP_CONTEXT ]
+        flavor bool 
+      }
+    }
+
+    interface CYGINT_LIBC_STARTUP_MAIN_NO_STACK_SIZE{
+      display "Don't allow main()'s stack size to be set"
+      flavor bool 
+    }
+
+    option CYGNUM_LIBC_MAIN_DEFAULT_STACK_SIZE{
+      display "main()'s default thread stack size"
+      legal_values [16 to 0x7fffffff ]
+      active_if [!CYGINT_LIBC_STARTUP_MAIN_NO_STACK_SIZE ]
+      flavor data 
+    }
+
+    component CYGFUN_LIBC_ATEXIT{
+      display "Include atexit() function"
+      flavor bool 
+
+      option CYGNUM_LIBC_ATEXIT_HANDLERS{
+        display "Number of functions atexit() supports"
+        legal_values [1 to 0x7fffffff ]
+        flavor data 
+      }
+    }
+
+    option CYGSEM_LIBC_EXIT_CALLS_FFLUSH{
+      display "Make exit() call fflush()"
+      requires [CYGINT_ISO_STDIO_FILEACCESS ]
+    }
+
+    option CYGSEM_LIBC_EXIT_STOPS_SYSTEM{
+      display "_exit() stops all threads"
+      requires [CYGPKG_KERNEL ]
+    }
+
+    option CYGDAT_LIBC_DEFAULT_ENVIRONMENT{
+      display "Default environment"
+      flavor data 
+    }
+
+    option CYGSEM_LIBC_INVOKE_DEFAULT_STATIC_CONSTRUCTORS{
+      display "Invoke default static constructors"
+      requires [CYGSEM_HAL_STOP_CONSTRUCTORS_ON_FLAG ]
+      requires [CYGSEM_LIBC_STARTUP_MAIN_THREAD || (CYGSEM_LIBC_STARTUP_MAIN_OTHER && CYGPKG_POSIX_PTHREAD) ]
+    }
+
+    component CYGPKG_LIBC_STARTUP_OPTIONS{
+      display "ISO environment startup/termination build options"
+      flavor none 
+
+      option CYGPKG_LIBC_STARTUP_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STARTUP_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STARTUP_TESTS{
+        display "ISO environment startup/termination tests"
+        calculated ["tests/atexit" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_STDIO{
+    display "ISO C library standard input/output functions"
+    requires [CYGPKG_IO ]
+    requires [CYGPKG_LIBC_I18N ]
+    implements [CYGINT_ISO_STDIO_FILETYPES ]
+    implements [CYGINT_ISO_STDIO_FILEACCESS ]
+    implements [CYGINT_ISO_STDIO_FILEPOS ]
+    implements [CYGINT_ISO_STDIO_FILEOPS ]
+    implements [CYGINT_ISO_STDIO_FORMATTED_IO ]
+    implements [CYGINT_ISO_STDIO_CHAR_IO ]
+    implements [CYGINT_ISO_STDIO_DIRECT_IO ]
+    implements [CYGINT_ISO_STDIO_ERROR ]
+    implements [CYGINT_ISO_STDIO_STREAMS ]
+    requires [(CYGDAT_LIBC_STDIO_DEFAULT_CONSOLE == "\"/dev/ttydiag\"" ? CYGPKG_IO_SERIAL_HALDIAG : 1) ]
+    requires [CYGBLD_ISO_STDIO_FILETYPES_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_FILEACCESS_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_FILEPOS_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_FILEOPS_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_FORMATTED_IO_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_CHAR_IO_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_DIRECT_IO_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_ERROR_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGBLD_ISO_STDIO_STREAMS_HEADER == "<cyg/libc/stdio/stdio.h>" ]
+    requires [CYGPKG_ISOINFRA ]
+    requires [CYGINT_ISO_ERRNO_CODES ]
+    requires [CYGINT_ISO_ERRNO ]
+    requires [CYGINT_ISO_STRERROR ]
+    requires [CYGINT_ISO_STRING_STRFUNCS ]
+    requires [CYGINT_ISO_STRING_MEMFUNCS ]
+    requires [CYGINT_ISO_STDLIB_STRCONV ]
+
+    option CYGIMP_LIBC_STDIO_INLINES{
+      display "Inline versions of <stdio.h> functions"
+    }
+
+    option FOPEN_MAX{
+      display "Permitted number of open files"
+      legal_values [3 to 0x7fffffff ]
+      flavor data 
+    }
+
+    option FILENAME_MAX{
+      display "Maximum length of filename"
+      legal_values [1 to 0x7fffffff ]
+      flavor data 
+    }
+
+    option L_tmpnam{
+      display "Maximum length of filenames for temporary files"
+      legal_values [4 to 0x7fffffff ]
+      flavor data 
+    }
+
+    option TMP_MAX{
+      display "Unique file names generated by tmpnam()"
+      legal_values [1 to 0x7fffffff ]
+      flavor data 
+    }
+
+    component CYGSEM_LIBC_STDIO_WANT_BUFFERED_IO{
+      display "Buffered I/O"
+      flavor bool 
+
+      option CYGNUM_LIBC_STDIO_BUFSIZE{
+        display "Default buffer size"
+        legal_values [1 to 0x7fffffff ]
+        flavor data 
+      }
+
+      option CYGSEM_LIBC_STDIO_DYNAMIC_SETVBUF{
+        display "setbuf()/setvbuf() allows dynamic setting"
+      }
+
+      option CYGSEM_LIBC_STDIO_SETVBUF_MALLOC{
+        display "setbuf()/setvbuf() uses malloc()"
+        requires [CYGINT_ISO_MALLOC ]
+        requires [CYGSEM_LIBC_STDIO_DYNAMIC_SETVBUF ]
+      }
+    }
+
+    option BUFSIZ{
+      display "Default buffer size (BUFSIZ)"
+      calculated [CYGSEM_LIBC_STDIO_WANT_BUFFERED_IO ? CYGNUM_LIBC_STDIO_BUFSIZE : 0 ]
+      flavor data 
+    }
+
+    option CYGFUN_LIBC_STDIO_ungetc{
+      display "Support for ungetc()"
+    }
+
+    component CYGPKG_LIBC_STDIO_OPEN{
+      display "Dynamic opening/closing of files"
+      requires [CYGINT_ISO_MALLOC ]
+
+      option CYGFUN_LIBC_STDIO_OPEN_POSIX_FDFUNCS{
+        display "POSIX fdopen/fileno functions"
+        active_if [CYGPKG_LIBC_STDIO_FILEIO ]
+        implements [CYGINT_ISO_STDIO_POSIX_FDFUNCS ]
+        calculated [1 ]
+      }
+    }
+
+    option CYGDAT_LIBC_STDIO_DEFAULT_CONSOLE{
+      display "Default console device"
+      flavor data 
+    }
+
+    component CYGPKG_LIBC_STDIO_FLOATING_POINT{
+      display "Floating point support"
+      flavor none 
+
+      option CYGSEM_LIBC_STDIO_PRINTF_FLOATING_POINT{
+        display "printf() family"
+        requires [CYGPKG_LIBM ]
+      }
+
+      option CYGSEM_LIBC_STDIO_SCANF_FLOATING_POINT{
+        display "scanf() family"
+        requires [CYGPKG_LIBM ]
+        requires [CYGINT_ISO_STDLIB_STRCONV_FLOAT ]
+      }
+    }
+
+    option CYGFUN_LIBC_STDIO_LONGLONG{
+      display "Long long support"
+      requires [CYGFUN_LIBC_STDLIB_CONV_LONGLONG ]
+    }
+
+    option CYGSEM_LIBC_STDIO_THREAD_SAFE_STREAMS{
+      display "Thread safe I/O streams"
+      active_if [CYGPKG_KERNEL ]
+    }
+
+    option CYGPKG_LIBC_STDIO_FILEIO{
+      display "Enable use of FILEIO package for IO operations."
+      active_if [CYGPKG_IO_FILEIO ]
+      requires [CYGSEM_LIBC_STDIO_WANT_BUFFERED_IO ]
+      requires [CYGSEM_LIBC_STDIO_DYNAMIC_SETVBUF ]
+      calculated [1 ]
+    }
+
+    component CYGPKG_LIBC_STDIO_OPTIONS{
+      display "C library stdio functions build options"
+      flavor none 
+
+      option CYGPKG_LIBC_STDIO_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STDIO_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STDIO_TESTS{
+        display "C library stdio function tests"
+        calculated ["tests/sprintf1 tests/sprintf2 tests/sscanf tests/stdiooutput " . ((CYGPKG_IO_FILEIO && CYGPKG_FS_RAM) ? "tests/fileio " : "") ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_STDLIB{
+    display "ISO C library general utility functions"
+    requires [CYGPKG_ISOINFRA ]
+    implements [CYGINT_ISO_STDLIB_STRCONV ]
+    implements [CYGINT_ISO_STDLIB_ENVIRON ]
+    implements [CYGINT_ISO_STDLIB_SYSTEM ]
+    implements [CYGINT_ISO_BSEARCH ]
+    implements [CYGINT_ISO_QSORT ]
+    implements [CYGINT_ISO_ABS ]
+    implements [CYGINT_ISO_DIV ]
+    requires [CYGINT_ISO_CTYPE ]
+    requires [CYGINT_ISO_STRING_STRFUNCS ]
+
+    component CYGIMP_LIBC_STDLIB_INLINES{
+      display "Inline versions of <stdlib.h> functions"
+      flavor none 
+
+      option CYGIMP_LIBC_STDLIB_INLINE_ABS{
+        display "abs() / labs()"
+        requires [CYGBLD_ISO_STDLIB_ABS_HEADER == "<cyg/libc/stdlib/abs.inl>" ]
+      }
+
+      option CYGIMP_LIBC_STDLIB_INLINE_DIV{
+        display "div() / ldiv()"
+        requires [CYGBLD_ISO_STDLIB_DIV_HEADER == "<cyg/libc/stdlib/div.inl>" ]
+      }
+
+      option CYGIMP_LIBC_STDLIB_INLINE_ATOX{
+        display "atof() / atoi() / atol()"
+        requires [CYGBLD_ISO_STDLIB_STRCONV_HEADER == "<cyg/libc/stdlib/atox.inl>" ]
+      }
+    }
+
+    component CYGPKG_LIBC_RAND{
+      display "Random number generation"
+      flavor none 
+
+      option CYGSEM_LIBC_PER_THREAD_RAND{
+        display "Per-thread random seed"
+        requires [CYGVAR_KERNEL_THREADS_DATA ]
+      }
+
+      option CYGNUM_LIBC_RAND_SEED{
+        display "Random number seed"
+        legal_values [0 to 0x7fffffff ]
+        flavor data 
+      }
+
+      option CYGNUM_LIBC_RAND_TRACE_LEVEL{
+        display "Tracing level"
+        legal_values [0 to 1 ]
+        flavor data 
+      }
+
+      option CYGIMP_LIBC_RAND_SIMPLEST{
+        display "Simplest implementation"
+        implements [CYGINT_ISO_RAND ]
+        flavor bool 
+      }
+
+      option CYGIMP_LIBC_RAND_SIMPLE1{
+        display "Simple implementation #1"
+        implements [CYGINT_ISO_RAND ]
+        flavor bool 
+      }
+
+      option CYGIMP_LIBC_RAND_KNUTH1{
+        display "Knuth implementation #1"
+        implements [CYGINT_ISO_RAND ]
+        flavor bool 
+      }
+    }
+
+    option CYGFUN_LIBC_strtod{
+      display "Provides strtod()"
+      requires [CYGPKG_LIBM ]
+      implements [CYGINT_ISO_STDLIB_STRCONV_FLOAT ]
+    }
+
+    option CYGFUN_LIBC_STDLIB_CONV_LONGLONG{
+      display "Provides long long conversion functions"
+    }
+
+    option CYGNUM_LIBC_BSEARCH_TRACE_LEVEL{
+      display "bsearch() tracing level"
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+
+    option CYGNUM_LIBC_QSORT_TRACE_LEVEL{
+      display "qsort() tracing level"
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+
+    component CYGPKG_LIBC_STDLIB_OPTIONS{
+      display "C library stdlib build options"
+      flavor none 
+
+      option CYGPKG_LIBC_STDLIB_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STDLIB_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STDLIB_TESTS{
+        display "C library stdlib tests"
+        calculated ["tests/abs tests/atoi tests/atol tests/bsearch tests/div tests/getenv tests/labs tests/ldiv tests/qsort tests/rand1 tests/rand2 tests/rand3 tests/rand4 tests/srand tests/strtol tests/strtoul" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_STRING{
+    display "ISO C library string functions"
+    implements [CYGINT_ISO_STRTOK_R ]
+    implements [CYGINT_ISO_STRING_LOCALE_FUNCS ]
+    implements [CYGINT_ISO_STRING_MEMFUNCS ]
+    implements [CYGINT_ISO_STRING_STRFUNCS ]
+    requires [CYGBLD_ISO_STRING_LOCALE_FUNCS_HEADER == "<cyg/libc/string/string.h>" ]
+    requires [CYGBLD_ISO_STRING_MEMFUNCS_HEADER == "<cyg/libc/string/string.h>" ]
+    requires [CYGBLD_ISO_STRING_STRFUNCS_HEADER == "<cyg/libc/string/string.h>" ]
+    requires [CYGBLD_ISO_STRTOK_R_HEADER == "<cyg/libc/string/string.h>" ]
+    requires [CYGPKG_ISOINFRA ]
+
+    option CYGIMP_LIBC_STRING_INLINES{
+      display "Inline versions of <string.h> functions"
+    }
+
+    option CYGIMP_LIBC_STRING_PREFER_SMALL_TO_FAST{
+      display "Optimize string functions for code size"
+      flavor bool 
+    }
+
+    option CYGFUN_LIBC_STRING_BSD_FUNCS{
+      display "Provide BSD compatibility functions"
+      implements [CYGINT_ISO_STRING_BSD_FUNCS ]
+      requires [CYGBLD_ISO_STRING_BSD_FUNCS_HEADER == "<cyg/libc/string/bsdstring.h>" ]
+      requires [CYGINT_ISO_CTYPE ]
+      flavor bool 
+    }
+
+    component CYGPKG_LIBC_STRING_STRTOK{
+      display "strtok"
+      flavor none 
+
+      option CYGSEM_LIBC_STRING_PER_THREAD_STRTOK{
+        display "Per-thread strtok()"
+        active_if [CYGPKG_KERNEL ]
+        requires [CYGVAR_KERNEL_THREADS_DATA ]
+      }
+
+      option CYGNUM_LIBC_STRING_STRTOK_TRACE_LEVEL{
+        display "Tracing level"
+        legal_values [0 to 1 ]
+        flavor data 
+      }
+    }
+
+    option CYGFUN_LIBC_STRING_STRDUP{
+      display "strdup"
+      active_if [CYGINT_ISO_MALLOC ]
+      calculated [1 ]
+    }
+
+    component CYGPKG_LIBC_STRING_OPTIONS{
+      display "C library string functions build options"
+      flavor none 
+
+      option CYGPKG_LIBC_STRING_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STRING_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_STRING_TESTS{
+        display "C library string function tests"
+        calculated ["tests/memchr tests/memcmp1 tests/memcmp2 tests/memcpy1 tests/memcpy2 tests/memmove1 tests/memmove2 tests/memset tests/strcat1 tests/strcat2 tests/strchr tests/strcmp1 tests/strcmp2 tests/strcoll1 tests/strcoll2 tests/strcpy1 tests/strcpy2 tests/strcspn tests/strcspn tests/strlen tests/strncat1 tests/strncat2 tests/strncpy1 tests/strncpy2 tests/strpbrk tests/strrchr tests/strspn tests/strstr tests/strtok tests/strxfrm1 tests/strxfrm2" ]
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_LIBC_TIME{
+    display "ISO C library date and time functions"
+    implements [CYGINT_ISO_C_TIME_TYPES ]
+    implements [CYGINT_ISO_C_CLOCK_FUNCS ]
+    requires [CYGBLD_ISO_C_TIME_TYPES_HEADER == "<cyg/libc/time/time.h>" ]
+    requires [CYGBLD_ISO_C_CLOCK_FUNCS_HEADER == "<cyg/libc/time/time.h>" ]
+    requires [CYGPKG_ISOINFRA ]
+    requires [CYGINT_ISO_DIV ]
+    requires [CYGINT_ISO_ABS ]
+
+    option CYGSEM_LIBC_TIME_CLOCK_WORKING{
+      display "Working clock() function"
+      requires [CYGFUN_KERNEL_THREADS_TIMER ]
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGSEM_LIBC_TIME_TIME_WORKING{
+      display "Working time() function"
+      requires [CYGPKG_IO_WALLCLOCK ]
+    }
+
+    option CYGSEM_LIBC_TIME_SETTIME_WORKING{
+      display "Working cyg_libc_time_settime() function"
+      requires [CYGPKG_IO_WALLCLOCK ]
+    }
+
+    option CYGFUN_LIBC_TIME_POSIX{
+      display "POSIX time functions"
+      requires [CYGINT_ISO_STRING_BSD_FUNCS ]
+    }
+
+    option CYGFUN_LIBC_TIME_SUS_EXTNS{
+      display "Single UNIX extensions"
+    }
+
+    component CYGPKG_LIBC_TIME_ZONES{
+      display "Time zone offsets"
+      flavor none 
+
+      option CYGNUM_LIBC_TIME_DST_DEFAULT_STATE{
+        display "Default Daylight Savings Time state"
+        legal_values [-- -1 to 1 ]
+        flavor data 
+      }
+
+      option CYGNUM_LIBC_TIME_STD_DEFAULT_OFFSET{
+        display "Default Standard Time offset"
+        legal_values [-- -90000 to 90000 ]
+        flavor data 
+      }
+
+      option CYGNUM_LIBC_TIME_DST_DEFAULT_OFFSET{
+        display "Default Daylight Savings Time offset"
+        legal_values [-- -90000 to 90000 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_LIBC_TIME_INLINES{
+      display "Inline functions"
+      flavor none 
+
+      option CYGIMP_LIBC_TIME_ASCTIME_INLINE{
+        display "asctime()"
+      }
+
+      option CYGIMP_LIBC_TIME_CTIME_INLINE{
+        display "ctime()"
+      }
+
+      option CYGIMP_LIBC_TIME_DIFFTIME_INLINE{
+        display "difftime()"
+      }
+
+      option CYGIMP_LIBC_TIME_GMTIME_INLINE{
+        display "gmtime()"
+      }
+
+      option CYGIMP_LIBC_TIME_LOCALTIME_INLINE{
+        display "localtime()"
+      }
+
+      option CYGIMP_LIBC_TIME_MKTIME_INLINE{
+        display "mktime()"
+      }
+
+      option CYGIMP_LIBC_TIME_ASCTIME_R_INLINE{
+        display "asctime_r()"
+        requires [CYGFUN_LIBC_TIME_POSIX ]
+      }
+
+      option CYGIMP_LIBC_TIME_CTIME_R_INLINE{
+        display "ctime_r()"
+        requires [CYGFUN_LIBC_TIME_POSIX ]
+      }
+
+      option CYGIMP_LIBC_TIME_GMTIME_R_INLINE{
+        display "gmtime_r()"
+        requires [CYGFUN_LIBC_TIME_POSIX ]
+      }
+
+      option CYGIMP_LIBC_TIME_LOCALTIME_R_INLINE{
+        display "localtime_r()"
+        requires [CYGFUN_LIBC_TIME_POSIX ]
+      }
+    }
+
+    option CYGNUM_LIBC_TIME_CLOCK_TRACE_LEVEL{
+      display "clock() tracing level"
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+
+    component CYGPKG_LIBC_TIME_OPTIONS{
+      display "C library time functions build options"
+      flavor none 
+
+      option CYGPKG_LIBC_TIME_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_TIME_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_LIBC_TIME_TESTS{
+        display "C library time and date function tests"
+        calculated ["tests/asctime tests/clock tests/ctime tests/gmtime tests/localtime tests/mktime tests/strftime tests/time " . (CYGFUN_LIBC_TIME_POSIX ? "tests/strptime" : "") ]
+        flavor data 
+      }
+    }
+  }
+}
+
+package CYGPKG_LIBM{
+  display "Math library"
+
+  component CYGPKG_LIBM_COMPATIBILITY{
+    display "Compatibility mode"
+    flavor none 
+
+    interface CYGINT_LIBM_COMPAT{
+      requires [1 == CYGINT_LIBM_COMPAT ]
+    }
+
+    option CYGSEM_LIBM_COMPAT_IEEE_ONLY{
+      display "IEEE-only"
+      implements [CYGINT_LIBM_COMPAT ]
+    }
+
+    component CYGNUM_LIBM_COMPATIBILITY{
+      display "Default mode"
+      requires [CYGPKG_LIBC ]
+      implements [CYGINT_LIBM_COMPAT ]
+      legal_values ["POSIX" "IEEE" "XOPEN" "SVID" ]
+      flavor booldata 
+
+      option CYGNUM_LIBM_COMPAT_DEFAULT{
+        display "Numeric representation"
+        calculated [CYGNUM_LIBM_COMPATIBILITY == "POSIX" ? "CYGNUM_LIBM_COMPAT_POSIX" : CYGNUM_LIBM_COMPATIBILITY == "IEEE" ? "CYGNUM_LIBM_COMPAT_IEEE" : CYGNUM_LIBM_COMPATIBILITY == "XOPEN" ? "CYGNUM_LIBM_COMPAT_XOPEN" : CYGNUM_LIBM_COMPATIBILITY == "SVID" ? "CYGNUM_LIBM_COMPAT_SVID" : "<undefined>" ]
+        flavor data 
+      }
+    }
+
+    option CYGFUN_LIBM_SVID3_scalb{
+      display "SVID3-style scalb()"
+    }
+
+    option CYGSYM_LIBM_NO_XOPEN_SVID_NAMESPACE_POLLUTION{
+      display "Reduce namespace pollution"
+    }
+
+    option CYGSEM_LIBM_USE_STDERR{
+      display "Output to stderr for math errors"
+      requires [!CYGSEM_LIBM_COMPAT_IEEE_ONLY ]
+      requires [CYGPKG_LIBC_STDIO ]
+    }
+  }
+
+  component CYGPKG_LIBM_THREAD_SAFETY{
+    display "Thread safety"
+    flavor none 
+
+    option CYGSEM_LIBM_THREAD_SAFE_COMPAT_MODE{
+      display "Compatibility mode setting"
+      requires [!CYGSEM_LIBM_COMPAT_IEEE_ONLY ]
+      requires [CYGVAR_KERNEL_THREADS_DATA ]
+    }
+
+    option CYGSEM_LIBM_THREAD_SAFE_GAMMA_FUNCTIONS{
+      display "gamma() and lgamma()"
+      requires [CYGVAR_KERNEL_THREADS_DATA ]
+    }
+  }
+
+  component CYGPKG_LIBM_TRACE{
+    display "Tracing output levels in math library"
+    requires [CYGDBG_USE_TRACING ]
+    flavor bool 
+
+    option CYGNUM_LIBM_COMPATMODE_TRACE_LEVEL{
+      display "Compatibility mode get/set"
+      requires [CYGSEM_LIBM_THREAD_SAFE_COMPAT_MODE ]
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+
+    option CYGNUM_LIBM_SIGNGAM_TRACE_LEVEL{
+      display "signgam variable access"
+      requires [CYGSEM_LIBM_THREAD_SAFE_GAMMA_FUNCTIONS ]
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+  }
+
+  option CYGNUM_LIBM_X_TLOSS{
+    display "Bessel function limit of significance"
+    legal_values [1 to 1e308 ]
+    flavor data 
+  }
+
+  component CYGPKG_LIBM_OPTIONS{
+    display "Math library build options"
+    flavor none 
+
+    option CYGPKG_LIBM_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_LIBM_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_LIBM_TESTS{
+      display "Math library tests"
+      calculated ["tests/vectors/acos tests/vectors/asin tests/vectors/atan tests/vectors/atan2 tests/vectors/ceil tests/vectors/cos tests/vectors/cosh tests/vectors/exp tests/vectors/fabs tests/vectors/floor tests/vectors/fmod tests/vectors/frexp tests/vectors/ldexp tests/vectors/log tests/vectors/log10 tests/vectors/modf tests/vectors/pow tests/vectors/sin tests/vectors/sinh tests/vectors/sqrt tests/vectors/tan tests/vectors/tanh" ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_POSIX{
+  display "POSIX compatibility layer"
+  requires [CYGPKG_KERNEL ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_ERROR ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGIMP_KERNEL_SCHED_SORTED_QUEUES ]
+  implements [CYGINT_ISO_POSIX_LIMITS ]
+  requires [CYGBLD_ISO_POSIX_LIMITS_HEADER == "<cyg/posix/limits.h>" ]
+  requires [CYGBLD_ISO_PMUTEXTYPES_HEADER == "<cyg/posix/muttypes.h>" ]
+  requires [CYGBLD_ISO_PTHREAD_MUTEX_HEADER == "<cyg/posix/mutex.h>" ]
+
+  component CYGPKG_POSIX_PTHREAD_MUTEX{
+    display "POSIX pthread mutexes"
+    implements [CYGINT_ISO_PMUTEXTYPES ]
+    implements [CYGINT_ISO_PTHREAD_MUTEX ]
+    flavor bool 
+
+    option _POSIX_THREAD_PRIO_INHERIT{
+      display "POSIX mutex priority inheritance feature test macro"
+      requires [CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_INHERIT ]
+      flavor bool 
+    }
+
+    option _POSIX_THREAD_PRIO_PROTECT{
+      display "POSIX mutex priority ceiling feature test macro"
+      requires [CYGSEM_KERNEL_SYNCH_MUTEX_PRIORITY_INVERSION_PROTOCOL_CEILING ]
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_POSIX_SCHED{
+    display "POSIX scheduling configuration"
+    implements [CYGINT_ISO_SCHED_IMPL ]
+    requires [CYGPKG_POSIX_CLOCKS ]
+    flavor bool 
+
+    option _POSIX_PRIORITY_SCHEDULING{
+      display "POSIX priority scheduling feature test macro"
+      calculated [1 ]
+      requires [CYGSEM_KERNEL_SCHED_MLQUEUE ]
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_POSIX_PTHREAD{
+    display "POSIX pthread configuration"
+    flavor bool 
+
+    option CYGPKG_POSIX_PTHREAD_REQUIREMENTS{
+      display "Generic requirements of pthread package"
+      calculated [1 ]
+      implements [CYGINT_ISO_PTHREADTYPES ]
+      implements [CYGINT_ISO_PTHREAD_IMPL ]
+      requires [CYGPKG_POSIX_SCHED ]
+      requires [CYGSEM_KERNEL_SCHED_TIMESLICE_ENABLE ]
+      requires [CYGSEM_KERNEL_SCHED_ASR_SUPPORT ]
+      requires [CYGSEM_KERNEL_SCHED_ASR_GLOBAL ]
+      requires [!CYGSEM_KERNEL_SCHED_ASR_DATA_GLOBAL ]
+      requires [CYGFUN_KERNEL_THREADS_STACK_LIMIT ]
+      requires [CYGBLD_ISO_PTHREADTYPES_HEADER == "<cyg/posix/types.h>" ]
+      requires [CYGBLD_ISO_PTHREAD_IMPL_HEADER == "<cyg/posix/pthread.h>" ]
+      flavor bool 
+    }
+
+    component CYGPKG_POSIX_PTHREAD_VALUES{
+      display "Constant values used in pthread package"
+      calculated [1 ]
+      flavor bool 
+
+      option CYGNUM_POSIX_PTHREAD_DESTRUCTOR_ITERATIONS{
+        display "Maximum number of iterations of key destructors"
+        legal_values [4 to 100 ]
+        flavor data 
+      }
+
+      option CYGNUM_POSIX_PTHREAD_KEYS_MAX{
+        display "Maximum number of per-thread data keys allowed"
+        legal_values [128 to 65535 ]
+        flavor data 
+      }
+
+      option CYGNUM_POSIX_PTHREAD_THREADS_MAX{
+        display "Maximum number of threads allowed"
+        legal_values [64 to 1024 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_POSIX_PTHREAD_FEATURES{
+      display "Fixed Feature test macros for POSIX"
+      calculated [1 ]
+      flavor bool 
+
+      option _POSIX_THREADS{
+        display "POSIX thread support feature test macro"
+        calculated [1 ]
+        requires [CYGSEM_KERNEL_SCHED_TIMESLICE ]
+        requires [CYGVAR_KERNEL_THREADS_DATA ]
+        flavor bool 
+      }
+
+      option _POSIX_THREAD_PRIORITY_SCHEDULING{
+        display "POSIX thread priority scheduling feature test macro"
+        calculated [1 ]
+        requires [CYGSEM_KERNEL_SCHED_MLQUEUE ]
+        requires [_POSIX_THREADS ]
+        flavor bool 
+      }
+
+      option _POSIX_THREAD_ATTR_STACKADDR{
+        display "POSIX stack address attribute feature test macro"
+        calculated [1 ]
+        flavor bool 
+      }
+
+      option _POSIX_THREAD_ATTR_STACKSIZE{
+        display "POSIX stack size attribute feature test macro"
+        calculated [1 ]
+        flavor bool 
+      }
+
+      option _POSIX_THREAD_PROCESS_SHARED{
+        display "POSIX process shared attribute feature test macro"
+        calculated [0 ]
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_POSIX_MAIN_THREAD{
+      display "Main thread configuration"
+      calculated [1 ]
+      requires [0 != CYGPKG_LIBC_STARTUP ]
+      requires [CYGSEM_LIBC_STARTUP_MAIN_OTHER ]
+      implements [CYGINT_LIBC_STARTUP_EXTERNAL_INVOKE_MAIN_POSSIBLE ]
+      flavor bool 
+
+      option CYGNUM_POSIX_MAIN_DEFAULT_PRIORITY{
+        display "main()'s default thread priority"
+        legal_values [0 to 31 ]
+        flavor data 
+      }
+    }
+  }
+
+  option CYGPKG_POSIX_CLOCKS{
+    display "POSIX clocks"
+    implements [CYGINT_ISO_POSIX_CLOCK_TYPES ]
+    implements [CYGINT_ISO_POSIX_CLOCKS ]
+    implements [CYGINT_ISO_POSIX_SLEEP ]
+    requires [CYGBLD_ISO_POSIX_CLOCK_TYPES_HEADER == "<cyg/posix/time.h>" ]
+    requires [CYGBLD_ISO_POSIX_CLOCKS_HEADER == "<cyg/posix/time.h>" ]
+    requires [CYGBLD_ISO_STRUCTTIMEVAL_HEADER == "<cyg/posix/sys/time.h>" ]
+    requires [CYGPKG_KERNEL ]
+    requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    flavor bool 
+  }
+
+  option CYGPKG_POSIX_TIMERS{
+    display "POSIX timers"
+    implements [CYGINT_ISO_POSIX_TIMER_TYPES ]
+    implements [CYGINT_ISO_POSIX_TIMERS ]
+    implements [CYGINT_ISO_POSIX_TIMER_OPS ]
+    requires [CYGBLD_ISO_POSIX_TIMER_TYPES_HEADER == "<cyg/posix/time.h>" ]
+    requires [CYGBLD_ISO_POSIX_TIMERS_HEADER == "<cyg/posix/time.h>" ]
+    requires [CYGPKG_KERNEL ]
+    requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    requires [CYGPKG_POSIX_PTHREAD ]
+    requires [CYGPKG_POSIX_SIGNALS ]
+    requires [CYGINT_ISO_POSIX_CLOCKS ]
+    flavor bool 
+  }
+
+  option CYGPKG_POSIX_SEMAPHORES{
+    display "POSIX semaphores"
+    implements [CYGINT_ISO_SEMAPHORES ]
+    requires [CYGBLD_ISO_SEMAPHORES_HEADER == "<cyg/posix/semaphore.h>" ]
+    flavor bool 
+  }
+
+  component CYGPKG_POSIX_MQUEUES{
+    display "POSIX message queues"
+    implements [CYGINT_ISO_MQUEUE ]
+    requires [CYGPKG_KERNEL ]
+    requires [CYGINT_ISO_MALLOC ]
+    requires [CYGINT_ISO_ERRNO ]
+    requires [CYGINT_ISO_STRING_STRFUNCS ]
+    requires [CYGINT_ISO_PTHREAD_MUTEX ]
+    requires [CYGPKG_POSIX_CLOCKS ]
+    flavor bool 
+
+    option CYGNUM_POSIX_MQUEUE_OPEN_MAX{
+      display "Maximum number of message queues"
+      legal_values [1 to 999999 ]
+      flavor data 
+    }
+
+    option CYGIMP_POSIX_MQUEUE_VALIDATE_DESCRIPTOR{
+      display "Validate queue descriptors"
+      flavor bool 
+    }
+
+    option CYGFUN_POSIX_MQUEUE_NOTIFY{
+      display "Allow empty queue notification"
+      requires [CYGPKG_POSIX_SIGNALS ]
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_POSIX_SIGNALS{
+    display "POSIX signals configuration"
+    requires [CYGPKG_KERNEL_EXCEPTIONS ]
+    requires [CYGPKG_POSIX_PTHREAD ]
+    requires [CYGPKG_POSIX_TIMERS ]
+    implements [CYGINT_POSIX_REALTIME_SIGNALS ]
+    implements [CYGINT_ISO_SIGSETJMP ]
+    requires [CYGBLD_ISO_SIGSETJMP_HEADER == "<cyg/posix/sigsetjmp.h>" ]
+    implements [CYGINT_ISO_SIGNAL_NUMBERS ]
+    implements [CYGINT_ISO_SIGNAL_IMPL ]
+    requires [CYGBLD_ISO_SIGNAL_NUMBERS_HEADER == "<cyg/posix/signal.h>" ]
+    requires [CYGBLD_ISO_SIGNAL_IMPL_HEADER == "<cyg/posix/signal.h>" ]
+    flavor bool 
+  }
+
+  component CYGPKG_POSIX_UTSNAME{
+    display "POSIX utsname configuration"
+    requires [CYGBLD_ISO_UTSNAME_HEADER == "<cyg/posix/utsname.h>" ]
+    flavor bool 
+
+    option CYG_POSIX_UTSNAME_LENGTH{
+      display "Length of name strings in utsname structure"
+      legal_values [1 to 99999999 ]
+      flavor data 
+    }
+
+    option CYG_POSIX_UTSNAME_NODENAME_LENGTH{
+      display "Length of nodename string in utsname structure"
+      legal_values [1 to 99999999 ]
+      flavor data 
+    }
+  }
+
+  option CYGPKG_POSIX_TESTS{
+    display "POSIX tests"
+    calculated [(CYGPKG_POSIX_PTHREAD ? "tests/pthread1 tests/pthread2 tests/pthread3 " : "") . (CYGPKG_POSIX_PTHREAD_MUTEX ? "tests/pmutex3 " : "") . (CYGPKG_POSIX_MQUEUES ? "tests/pmqueue1 tests/pmqueue2 " : "") . (CYGPKG_POSIX_SIGNALS ? "tests/signal1 tests/signal2 tests/signal3 tests/sigsetjmp " : "") . ((CYGPKG_POSIX_SIGNALS && CYGPKG_POSIX_TIMERS && CYGPKG_POSIX_SEMAPHORES) ? "tests/timer1 " : "") . ((CYGPKG_POSIX_SIGNALS && CYGPKG_POSIX_TIMERS && CYGPKG_POSIX_PTHREAD && CYGPKG_POSIX_SEMAPHORES) ? "tests/tm_posix " : "") ]
+    flavor data 
+  }
+}
+
+package CYGPKG_UITRON{
+  display "uITRON compatibility layer"
+  requires [CYGPKG_KERNEL ]
+
+  interface CYGINT_UITRON_CONFORMANCE{
+    requires [1 == CYGINT_UITRON_CONFORMANCE ]
+  }
+
+  option CYGIMP_UITRON_STRICT_CONFORMANCE{
+    display "Check strict uITRON standards conformance"
+    requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    requires [CYGSEM_KERNEL_SCHED_MLQUEUE ]
+    requires [!CYGSEM_KERNEL_SCHED_TIMESLICE ]
+    requires [CYGFUN_KERNEL_THREADS_TIMER ]
+    requires [!CYGIMP_MBOX_USE_MBOXT_PLAIN ]
+    implements [CYGINT_UITRON_CONFORMANCE ]
+  }
+
+  option CYGIMP_UITRON_LOOSE_CONFORMANCE{
+    display "System configuration overrides uITRON"
+    implements [CYGINT_UITRON_CONFORMANCE ]
+  }
+
+  option CYGIMP_UITRON_INLINE_FUNCS{
+    display "Inline functions"
+  }
+
+  option CYGIMP_UITRON_CPP_OUTLINE_FUNCS{
+    display "C++ function names"
+  }
+
+  option CYGSEM_UITRON_BAD_PARAMS_RETURN_ERRORS{
+    display "Return error codes for bad params"
+  }
+
+  option CYGSEM_UITRON_PARAMS_NULL_IS_GOOD_PTR{
+    display "NULL is a good pointer"
+  }
+
+  component CYGPKG_UITRON_SEMAS{
+    display "Semaphores"
+    flavor bool 
+
+    option CYGNUM_UITRON_SEMAS{
+      display "Number of semaphores"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_SEMAS_CREATE_DELETE{
+      display "Support create and delete"
+      flavor bool 
+
+      option CYGNUM_UITRON_SEMAS_INITIALLY{
+        display "Number of semaphores created initially"
+        legal_values [0 to 65535 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_UITRON_SEMAS_ARE_INITIALIZED{
+      display "Initialize semaphore counts"
+      flavor bool 
+
+      option CYGDAT_UITRON_SEMA_INITIALIZERS{
+        display "Static initializers"
+        flavor data 
+      }
+    }
+  }
+
+  component CYGPKG_UITRON_MBOXES{
+    display "Mailboxes"
+    flavor bool 
+
+    option CYGNUM_UITRON_MBOXES{
+      display "Number of mailboxes"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_MBOXES_CREATE_DELETE{
+      display "Support create and delete"
+      flavor bool 
+
+      option CYGNUM_UITRON_MBOXES_INITIALLY{
+        display "Number of mailboxes created initially"
+        legal_values [0 to 65535 ]
+        flavor data 
+      }
+    }
+  }
+
+  component CYGPKG_UITRON_FLAGS{
+    display "Eventflags"
+    flavor bool 
+
+    option CYGNUM_UITRON_FLAGS{
+      display "Number of eventflags"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_FLAGS_CREATE_DELETE{
+      display "Support create and delete"
+      flavor bool 
+
+      option CYGNUM_UITRON_FLAGS_INITIALLY{
+        display "Number of eventflags created initially"
+        legal_values [0 to 65535 ]
+        flavor data 
+      }
+    }
+  }
+
+  component CYGPKG_UITRON_TASKS{
+    display "Tasks"
+    flavor none 
+
+    option CYGNUM_UITRON_TASKS{
+      display "Number of tasks"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    option CYGNUM_UITRON_START_TASKS{
+      display "Start tasks"
+      legal_values [0 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_TASKS_CREATE_DELETE{
+      display "Support create and delete"
+      flavor bool 
+
+      option CYGNUM_UITRON_TASKS_INITIALLY{
+        display "Number of tasks created initially"
+        legal_values [1 to 65535 ]
+        flavor data 
+      }
+    }
+
+    option CYGNUM_UITRON_STACK_SIZE{
+      display "Default stack size"
+      legal_values [128 to 0x7FFFFFFF ]
+      flavor data 
+    }
+
+    option CYGDAT_UITRON_TASK_EXTERNS{
+      display "Externs for initialization"
+      flavor data 
+    }
+
+    option CYGDAT_UITRON_TASK_INITIALIZERS{
+      display "Static initializers"
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_MEMPOOLFIXED{
+    display "Fixed-size memorypools"
+    requires [CYGPKG_MEMALLOC ]
+    flavor bool 
+
+    option CYGNUM_UITRON_MEMPOOLFIXED{
+      display "Number of fixed-size memorypools"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_MEMPOOLFIXED_CREATE_DELETE{
+      display "Support create and delete"
+      active_if [(0 < CYGNUM_UITRON_MEMPOOLFIXED) ]
+      flavor bool 
+
+      option CYGNUM_UITRON_MEMPOOLFIXED_INITIALLY{
+        display "Number of fixed mempools created initially"
+        legal_values [0 to 65535 ]
+        flavor data 
+      }
+    }
+
+    option CYGDAT_UITRON_MEMPOOLFIXED_EXTERNS{
+      display "Externs for initialization"
+      flavor data 
+    }
+
+    option CYGDAT_UITRON_MEMPOOLFIXED_INITIALIZERS{
+      display "Static initializers"
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_MEMPOOLVAR{
+    display "Variable-size memorypools"
+    requires [CYGPKG_MEMALLOC ]
+    flavor bool 
+
+    option CYGNUM_UITRON_MEMPOOLVAR{
+      display "Number of variable-size memory pools"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_MEMPOOLVAR_CREATE_DELETE{
+      display "Support create and delete"
+      active_if [(0 < CYGNUM_UITRON_MEMPOOLVAR) ]
+      flavor bool 
+
+      option CYGNUM_UITRON_MEMPOOLVAR_INITIALLY{
+        display "Number of variable-size mempools created initially"
+        legal_values [0 to 65535 ]
+        flavor data 
+      }
+    }
+
+    option CYGDAT_UITRON_MEMPOOLVAR_EXTERNS{
+      display "Externs for initialization"
+      flavor data 
+    }
+
+    option CYGDAT_UITRON_MEMPOOLVAR_INITIALIZERS{
+      display "Static initializers"
+      flavor data 
+    }
+  }
+
+  option CYGSEM_UITRON_TIME_IS_MILLISECONDS{
+    display "uITRON time unit is mS"
+    active_if [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    flavor bool 
+  }
+
+  component CYGPKG_UITRON_ALARMS{
+    display "Alarm handlers"
+    requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    flavor bool 
+
+    option CYGNUM_UITRON_ALARMS{
+      display "Number of alarm handlers"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_CYCLICS{
+    display "Cyclic handlers"
+    requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    flavor bool 
+
+    option CYGNUM_UITRON_CYCLICS{
+      display "Number cyclic handlers"
+      legal_values [1 to 65535 ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_INTERRUPT_FUNCTIONS{
+    display "Interrupt-safe functions"
+    flavor none 
+
+    option CYGSEM_UITRON_ISRFUNCS_TRY_IMMEDIATE_EXECUTION{
+      display "Execute in ISR if safe"
+      flavor bool 
+    }
+
+    option CYGNUM_UITRON_ISR_ACTION_QUEUESIZE{
+      display "Deferred operation queue size"
+      legal_values [4 8 16 32 64 128 256 ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_VERSION{
+    display "Version information"
+    flavor none 
+
+    option CYGNUM_UITRON_VER_MAKER{
+      display "OS maker"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+
+    option CYGNUM_UITRON_VER_ID{
+      display "OS identification"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+
+    option CYGNUM_UITRON_VER_SPVER{
+      display "ITRON specification"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+
+    option CYGNUM_UITRON_VER_PRVER{
+      display "OS product version"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+
+    component CYGPKG_UITRON_VERSION_PRNO{
+      display "Product info"
+      flavor none 
+
+      option CYGNUM_UITRON_VER_PRNO_0{
+        display "Field 0"
+        legal_values [0 to 0xFFFF ]
+        flavor data 
+      }
+
+      option CYGNUM_UITRON_VER_PRNO_1{
+        display "Field 1"
+        legal_values [0 to 0xFFFF ]
+        flavor data 
+      }
+
+      option CYGNUM_UITRON_VER_PRNO_2{
+        display "Field 2"
+        legal_values [0 to 0xFFFF ]
+        flavor data 
+      }
+
+      option CYGNUM_UITRON_VER_PRNO_3{
+        display "Field 3"
+        legal_values [0 to 0xFFFF ]
+        flavor data 
+      }
+    }
+
+    option CYGNUM_UITRON_VER_CPU{
+      display "CPU information"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+
+    option CYGNUM_UITRON_VER_VAR{
+      display "System variant"
+      legal_values [0 to 0xFFFF ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_UITRON_OPTIONS{
+    display "uITRON build options"
+    flavor none 
+
+    option CYGPKG_UITRON_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_UITRON_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_UITRON_TESTS{
+      display "uITRON tests"
+      calculated ["tests/testcxx tests/testcx2 tests/testcx3 tests/testcx4 tests/testcx5 tests/testcx6 tests/testcx7 tests/testcx8 tests/testcx9" . ((!CYGIMP_UITRON_INLINE_FUNCS && !CYGIMP_UITRON_CPP_OUTLINE_FUNCS) ? " tests/test1 tests/test2 tests/test3 tests/test4 tests/test5 tests/test6 tests/test7 tests/test8 tests/test9 tests/testintr" : "") ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_IO_WATCHDOG{
+  display "Watchdog IO device"
+  requires [1 == CYGINT_WATCHDOG_IMPLEMENTATIONS ]
+
+  interface CYGINT_WATCHDOG_HW_IMPLEMENTATIONS{
+    display "Number of watchdog hardware implementations"
+  }
+
+  interface CYGINT_WATCHDOG_IMPLEMENTATIONS{
+    display "Number of watchdog implementations"
+  }
+
+  component CYGPKG_IO_WATCHDOG_IMPLEMENTATION{
+    display "Watchdog implementation"
+    flavor none 
+
+    option CYGPKG_WATCHDOG_EMULATE{
+      display "Watchdog emulator"
+      implements [CYGINT_WATCHDOG_IMPLEMENTATIONS ]
+      requires [CYGVAR_KERNEL_COUNTERS_CLOCK ]
+    }
+
+    option CYGIMP_WATCHDOG_NONE{
+      display "No watchdog"
+      implements [CYGINT_WATCHDOG_IMPLEMENTATIONS ]
+    }
+  }
+
+  interface CYGINT_WATCHDOG_RESETS_ON_TIMEOUT{
+    display "Set if device causes a reset on timeout"
+  }
+
+  option CYGSEM_WATCHDOG_RESETS_ON_TIMEOUT{
+    display "Set if device causes a reset on timeout"
+    calculated [CYGINT_WATCHDOG_RESETS_ON_TIMEOUT == 1 ]
+  }
+
+  option CYGPKG_IO_WATCHDOG_BUILD_INTERACTIVE_TEST{
+    display "Build interactive watchdog test"
+    flavor bool 
+  }
+
+  component CYGPKG_IO_WATCHDOG_OPTIONS{
+    display "Watchdog build options"
+    flavor none 
+
+    option CYGPKG_IO_WATCHDOG_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_WATCHDOG_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_WATCHDOG_TESTS{
+      display "Watchdog tests"
+      calculated [CYGPKG_IO_WATCHDOG_BUILD_INTERACTIVE_TEST ? CYGSEM_WATCHDOG_RESETS_ON_TIMEOUT ? "tests/watchdog2 tests/watchdog_reset" : "tests/watchdog tests/watchdog2 tests/watchdog_reset" : CYGSEM_WATCHDOG_RESETS_ON_TIMEOUT ? "tests/watchdog2" : "tests/watchdog tests/watchdog2" ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_IO_WALLCLOCK{
+  display "Wallclock device"
+
+  interface CYGINT_WALLCLOCK_HW_IMPLEMENTATIONS{
+    display "Number of wallclock hardware implementations"
+  }
+
+  interface CYGINT_WALLCLOCK_IMPLEMENTATIONS{
+    display "Number of wallclock implementations"
+    requires [1 == CYGINT_WALLCLOCK_IMPLEMENTATIONS ]
+  }
+
+  interface CYGINT_WALLCLOCK_SET_GET_MODE_SUPPORTED{
+    display "Wallclock driver supports set/get mode"
+  }
+
+  option CYGSEM_WALLCLOCK_MODE{
+    display "Wallclock mode"
+    legal_values ["init_get" "set_get" ]
+    requires [CYGINT_WALLCLOCK_SET_GET_MODE_SUPPORTED || CYGSEM_WALLCLOCK_MODE == "init_get" ]
+    flavor data 
+  }
+
+  option CYGSEM_WALLCLOCK_SET_GET_MODE{
+    display "Wallclock set/get mode"
+    calculated [CYGSEM_WALLCLOCK_MODE == "set_get" ? 1 : 0 ]
+  }
+
+  component CYGPKG_IO_WALLCLOCK_IMPLEMENTATION{
+    display "Wallclock implementation"
+    flavor none 
+
+    option CYGPKG_WALLCLOCK_EMULATE{
+      display "Wallclock emulator"
+      implements [CYGINT_WALLCLOCK_IMPLEMENTATIONS ]
+      requires [CYGPKG_KERNEL ]
+    }
+
+    option CYGIMP_WALLCLOCK_NONE{
+      display "No wallclock"
+      implements [CYGINT_WALLCLOCK_IMPLEMENTATIONS ]
+    }
+  }
+
+  component CYGPKG_IO_WALLCLOCK_OPTIONS{
+    display "Wallclock build options"
+    flavor none 
+
+    option CYGPKG_IO_WALLCLOCK_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_WALLCLOCK_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_WALLCLOCK_TESTS{
+      display "Wallclock tests"
+      calculated [CYGPKG_KERNEL ? "tests/wallclock tests/wallclock2" : "" ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_ERROR{
+  display "Common error code support"
+  implements [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGBLD_ISO_ERRNO_CODES_HEADER == "<cyg/error/codes.h>" ]
+
+  component CYGPKG_ERROR_ERRNO{
+    display "errno variable"
+    implements [CYGINT_ISO_ERRNO ]
+    requires [CYGBLD_ISO_ERRNO_HEADER == "<cyg/error/errno.h>" ]
+    flavor bool 
+
+    option CYGSEM_ERROR_PER_THREAD_ERRNO{
+      display "Per-thread errno"
+      requires [CYGVAR_KERNEL_THREADS_DATA ]
+    }
+
+    option CYGNUM_ERROR_ERRNO_TRACE_LEVEL{
+      display "Tracing level"
+      legal_values [0 to 1 ]
+      flavor data 
+    }
+  }
+
+  option CYGPKG_ERROR_STRERROR{
+    display "strerror function"
+    implements [CYGINT_ISO_STRERROR ]
+    requires [CYGBLD_ISO_STRERROR_HEADER == "<cyg/error/strerror.h>" ]
+    flavor bool 
+  }
+
+  component CYGPKG_ERROR_OPTIONS{
+    display "Error package build options"
+    flavor none 
+
+    option CYGPKG_ERROR_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_ERROR_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_IO_FILEIO{
+  display "POSIX File IO compatibility layer"
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_ERROR ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGINT_ISO_STRING_STRFUNCS ]
+  implements [CYGINT_ISO_FCNTL ]
+  implements [CYGINT_ISO_OPEN ]
+  implements [CYGINT_ISO_DIRENT ]
+  requires [CYGBLD_ISO_DIRENT_HEADER == "<cyg/fileio/dirent.h>" ]
+  requires [CYGBLD_ISO_OPEN_MAX_HEADER == "<cyg/fileio/limits.h>" ]
+  requires [CYGBLD_ISO_NAME_MAX_HEADER == "<cyg/fileio/limits.h>" ]
+
+  interface CYGINT_IO_FILEIO_FS{
+    display "Filesystems interfacing to FILEIO"
+  }
+
+  option CYGFUN_IO_FILEIO_SELECT{
+    display "Enable support for select()"
+    active_if [CYGPKG_KERNEL ]
+    implements [CYGINT_ISO_SELECT ]
+  }
+
+  option CYGPKG_IO_FILEIO_DEVFS_SUPPORT{
+    display "Enable devfs support"
+    active_if [CYGPKG_IO ]
+  }
+
+  option CYGPKG_IO_FILEIO_SOCKET_SUPPORT{
+    display "Enable socket support"
+    active_if [CYGPKG_NET ]
+    active_if [CYGPKG_KERNEL ]
+  }
+
+  option CYGNUM_FILEIO_NFILE{
+    display "Maximum number of open files"
+    legal_values [1 to 9999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FILEIO_NFD{
+    display "Maximum number of open file descriptors"
+    legal_values [CYGNUM_FILEIO_NFILE to 9999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FILEIO_FSTAB_MAX{
+    display "Maximum number of installed filesystems"
+    legal_values [1 to 9999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FILEIO_MTAB_MAX{
+    display "Maximum number of mounted filesystems"
+    legal_values [CYGNUM_FILEIO_MTAB_EXTRA to 9999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FILEIO_MTAB_EXTRA{
+    display "Number of dynamically mounted filesystems"
+    legal_values [0 to 9999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FILEIO_NSTAB_MAX{
+    display "Maximum number of installed network stacks"
+    legal_values [1 to 9999999 ]
+    flavor data 
+  }
+
+  option CYGPKG_IO_FILEIO_TRACK_CWD{
+    display "Enable current directory tracking"
+    flavor bool 
+  }
+
+  component CYGPKG_IO_FILEIO_INODE{
+    display "Generic inode support"
+    requires [CYGINT_ISO_MALLOC ]
+    flavor bool 
+
+    option CYGNUM_IO_FILEIO_MAX_INODE_CACHE_DEAD{
+      display "Maximum space for unused cached inodes"
+      flavor data 
+    }
+  }
+
+  option CYGNUM_FILEIO_IOVEC_MAX{
+    display "Maximum size of iovec used by readv/writev"
+    legal_values [1 to 9999999 ]
+    flavor data 
+  }
+
+  option CYGSEM_FILEIO_INFO_DISK_USAGE{
+    display "cyg_fs_getinfo call for disk usage"
+    flavor bool 
+  }
+
+  component CYGPKG_FILEIO_FNMATCH{
+    display "POSIX fnmatch configuration"
+    requires [CYGBLD_ISO_FNMATCH_HEADER == "<cyg/fileio/fnmatch.h>" ]
+    flavor bool 
+  }
+
+  option CYGPKG_FILEIO_DIRENT_DTYPE{
+    display "Struct dirent contains a d_type field"
+    flavor bool 
+  }
+
+  option CYGPKG_IO_FILEIO_TESTS{
+    display "Fileio tests"
+    calculated ["tests/fileio1 tests/socket tests/select tests/stdio tests/pselect tests/fnmatch" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_NET{
+  display "Basic networking framework"
+  requires [CYGPKG_IO ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGINT_ISO_C_TIME_TYPES ]
+  requires [CYGINT_ISO_STRERROR ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGINT_ISO_MALLOC ]
+  requires [CYGINT_ISO_STRING_BSD_FUNCS ]
+  implements [CYGINT_ISO_NETDB_PROTO ]
+  implements [CYGINT_ISO_NETDB_SERV ]
+  requires [CYGBLD_ISO_NETDB_PROTO_HEADER == "<net/netdb.h>" ]
+  requires [CYGBLD_ISO_NETDB_SERV_HEADER == "<net/netdb.h>" ]
+  requires [CYGPKG_NET_STACK == 1 ]
+
+  interface CYGPKG_NET_DRIVER_FRAMEWORK{
+    display "Suitable driver framework interface, used by network package"
+  }
+
+  interface CYGPKG_NET_STACK{
+    display "Suitable network stack implementation, used by network package"
+  }
+
+  interface CYGPKG_NET_STACK_INET{
+    display "Network stack support for IPv4"
+  }
+
+  interface CYGPKG_NET_STACK_INET6{
+    display "Network stack support for IPv6"
+  }
+
+  interface CYGPKG_NET_STACK_IPSEC{
+    display "Network stack support for IPSEC"
+  }
+
+  component CYGPKG_NET_INET{
+    display "INET support"
+    active_if [CYGPKG_NET_STACK_INET ]
+    flavor bool 
+
+    option CYGPKG_NET_INET6{
+      display "IPv6 support"
+      active_if [CYGPKG_NET_STACK_INET6 ]
+      requires [CYGINT_IO_ETH_MULTICAST ]
+      flavor bool 
+    }
+
+    option CYGPKG_NET_IPSEC{
+      display "IPSEC support"
+      active_if [CYGPKG_NET_STACK_IPSEC ]
+      flavor bool 
+    }
+
+    option CYGSEM_NET_ROUTING{
+      display "Multicast routing support"
+      flavor bool 
+    }
+
+    option CYGSEM_NET_RANDOMID{
+      display "Use random sequence for IP packet identifiers"
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_NET_TFTP{
+    display "TFTP (RFC-1350) support"
+    requires [CYGPKG_NET_INET ]
+    flavor bool 
+
+    option CYGPKG_NET_TFTPD_THREAD_PRIORITY{
+      display "Priority level for TFTP daemon thread."
+      flavor data 
+    }
+
+    component CYGPKG_NET_TFTPD_CLIENT_BIG_PACKET{
+      display "Extension to allow negotiation of big packets"
+      requires [CYGINT_ISO_STDIO_FORMATTED_IO ]
+      flavor bool 
+
+      option CYGPKG_NET_TFTPD_CLIENT_BIG_PACKET_SIZE{
+        display "Packet size to negotiate"
+        legal_values [512 to 65464 ]
+        flavor data 
+      }
+    }
+
+    option CYGPKG_NET_TFTPD_THREAD_STACK_SIZE{
+      display "Stack size for TFTP threads."
+      flavor data 
+    }
+
+    component CYGSEM_NET_TFTPD_MULTITHREADED{
+      display "Multiple TFTPD server threads on the same port."
+      flavor bool 
+
+      option CYGNUM_NET_TFTPD_MULTITHREADED_PORTS{
+        display "Number of different ports with servers"
+        flavor data 
+      }
+    }
+
+    option CYGPKG_NET_TFTP_FILE_ACCESS{
+      display "File I/O functions for TFTP server"
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_NET_DHCP{
+    display "Use full DHCP instead of BOOTP"
+    requires [CYGPKG_NET_INET ]
+    active_if [(CYGHWR_NET_DRIVERS > 0) ]
+    flavor bool 
+
+    option CYGOPT_NET_DHCP_DHCP_THREAD{
+      display "DHCP management thread"
+      flavor bool 
+    }
+
+    option CYGOPT_NET_DHCP_DHCP_THREAD_PARAM{
+      display "DHCP management thread loops forever"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor data 
+    }
+
+    option CYGPKG_NET_DHCP_THREAD_PRIORITY{
+      display "DHCP management thread priority"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor data 
+    }
+
+    option CYGPKG_NET_DHCP_THREAD_STACK_SIZE{
+      display "Stack size for DHCP management threads."
+      flavor data 
+    }
+
+    option CYGOPT_NET_DHCP_PARM_REQ_LIST_REPLACE{
+      display "Replace DHCP request options"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor booldata 
+    }
+
+    option CYGOPT_NET_DHCP_PARM_REQ_LIST_ADDITIONAL{
+      display "Additional DHCP request options"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor booldata 
+    }
+
+    component CYGOPT_NET_DHCP_OPTION_HOST_NAME{
+      display "DHCP host name option"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor bool 
+
+      option CYGNUM_NET_DHCP_OPTION_HOST_NAME_LEN{
+        display "DHCP host name maximum length"
+        legal_values [0 to 255 ]
+        active_if [CYGOPT_NET_DHCP_OPTION_HOST_NAME ]
+        flavor data 
+      }
+    }
+
+    option CYGOPT_NET_DHCP_OPTION_DHCP_CLIENTID_MAC{
+      display "DHCP client ID option"
+      active_if [CYGOPT_NET_DHCP_DHCP_THREAD ]
+      flavor bool 
+    }
+
+    option CYGNUM_NET_DHCP_MIN_RETRY_TIME{
+      display "DHCP minimum retry time"
+      legal_values [0 to 100 ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_NET_IPV6_ROUTING{
+    display "Options controlling IPv6 routing"
+    active_if [CYGPKG_NET_INET6 ]
+    flavor bool 
+
+    component CYGOPT_NET_IPV6_ROUTING_THREAD{
+      display "Thread for IPv6 routing"
+      requires [CYGPKG_POSIX ]
+      flavor bool 
+
+      option CYGINT_NET_IPV6_ROUTING_THREAD_PRIORITY{
+        display "IPv6 routing thread priority"
+        flavor data 
+      }
+
+      option CYGINT_NET_IPV6_ROUTING_THREAD_PERIOD{
+        display "IPv6 routing thread rate"
+        flavor data 
+      }
+    }
+  }
+
+  component CYGPKG_NET_DEBUG{
+    display "Debug output"
+
+    option CYGDBG_NET_DHCP_CHATTER{
+      display "Extra debug output for DHCP"
+    }
+  }
+
+  option CYGDBG_NET_TIMING_STATS{
+    display "Network timing statistics"
+  }
+
+  option CYGDBG_NET_SHOW_MBUFS{
+    display "Network MBUF diagnostics"
+  }
+
+  component CYGPKG_NET_OPTIONS{
+    display "Networking support build options"
+    flavor none 
+
+    option CYGPKG_NET_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_NET_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+
+  component CYGPKG_NET_BUILD_TESTS{
+    display "Testing options"
+    flavor none 
+
+    option CYGPKG_NET_BUILD_HW_TESTS{
+      display "Build hardware networking tests (demo programs)"
+      requires [CYGHWR_NET_DRIVER_ETH0_SETUP || CYGHWR_NET_DRIVER_ETH1_SETUP ]
+      flavor bool 
+    }
+
+    option CYGPKG_NET_TESTS{
+      display "Networking tests"
+      calculated [CYGPKG_NET_BUILD_HW_TESTS ? "tests/mbuf_test tests/socket_test tests/ftp_test tests/server_test tests/nc_test_slave tests/tftp_client_test tests/tftp_server_test tests/tcp_echo tests/set_mac_address tests/bridge tests/flood tests/ping_test tests/dhcp_test tests/dhcp_test2 tests/ping_lo_test tests/tcp_lo_test tests/udp_lo_test tests/multi_lo_select tests/tcp_lo_select tests/addr_test" : "tests/ping_lo_test tests/tcp_lo_test tests/udp_lo_test tests/multi_lo_select tests/tcp_lo_select" ]
+      flavor data 
+    }
+
+    option CYGPKG_NET_TESTS_USE_RT_TEST_HARNESS{
+      display "Use real-time response test harness (if available)"
+    }
+  }
+
+  interface CYGHWR_NET_DRIVER_ETH0{
+    display "Does the hardware provide an 'eth0' device?"
+    requires [CYGHWR_NET_DRIVER_ETH0 <= 1 ]
+    flavor bool 
+  }
+
+  component CYGHWR_NET_DRIVER_ETH0_SETUP_OPTIONS{
+    display "Initialization options for 'eth0'"
+    active_if [(CYGHWR_NET_DRIVER_ETH0 == 1) ]
+    flavor none 
+
+    interface CYGHWR_NET_DRIVER_ETH0_SETUP{
+      display "Initialization options for 'eth0'"
+      requires [1 == CYGHWR_NET_DRIVER_ETH0_SETUP ]
+    }
+
+    component CYGHWR_NET_DRIVER_ETH0_MANUAL{
+      display "Initialize 'eth0' manually?"
+      implements [CYGHWR_NET_DRIVER_ETH0_SETUP ]
+    }
+
+    component CYGHWR_NET_DRIVER_ETH0_BOOTP{
+      display "Use BOOTP/DHCP to initialize 'eth0'?"
+      implements [CYGHWR_NET_DRIVER_ETH0_SETUP ]
+
+      option CYGHWR_NET_DRIVER_ETH0_DHCP{
+        display "Use DHCP rather than BOOTP for 'eth0'?"
+        active_if [CYGPKG_NET_DHCP ]
+        flavor bool 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH0_BOOTP_SHOW{
+        display "Show BOOTP/DHCP initialization values?"
+        flavor bool 
+      }
+    }
+
+    option CYGHWR_NET_DRIVER_ETH0_IPV6_PREFIX{
+      display "Static IPv6 address prefix for 'eth0'"
+      active_if [CYGPKG_NET_INET6 ]
+      flavor booldata 
+    }
+
+    component CYGHWR_NET_DRIVER_ETH0_ADDRS{
+      display "Address setups for 'eth0'"
+      implements [CYGHWR_NET_DRIVER_ETH0_SETUP ]
+
+      option CYGHWR_NET_DRIVER_ETH0_ADDRS_IP{
+        display "IP address for 'eth0'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH0_ADDRS_NETMASK{
+        display "Network mask address for 'eth0'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH0_ADDRS_BROADCAST{
+        display "Broadcast address for 'eth0'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH0_ADDRS_GATEWAY{
+        display "Gateway/router IP address for 'eth0'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH0_ADDRS_SERVER{
+        display "Server IP address for 'eth0'"
+        flavor data 
+      }
+    }
+  }
+
+  interface CYGHWR_NET_DRIVER_ETH1{
+    display "Does the hardware provide an 'eth1' device?"
+    requires [CYGHWR_NET_DRIVER_ETH1 <= 1 ]
+    flavor bool 
+  }
+
+  component CYGHWR_NET_DRIVER_ETH1_SETUP_OPTIONS{
+    display "Initialization options for 'eth1'"
+    active_if [(CYGHWR_NET_DRIVER_ETH1 == 1) ]
+    flavor none 
+
+    interface CYGHWR_NET_DRIVER_ETH1_SETUP{
+      display "Initialization options for 'eth1'"
+      requires [1 == CYGHWR_NET_DRIVER_ETH1_SETUP ]
+    }
+
+    component CYGHWR_NET_DRIVER_ETH1_MANUAL{
+      display "Initialize 'eth1' manually?"
+      implements [CYGHWR_NET_DRIVER_ETH1_SETUP ]
+    }
+
+    component CYGHWR_NET_DRIVER_ETH1_BOOTP{
+      display "Use BOOTP/DHCP to initialize 'eth1'?"
+      implements [CYGHWR_NET_DRIVER_ETH1_SETUP ]
+
+      option CYGHWR_NET_DRIVER_ETH1_DHCP{
+        display "Use DHCP rather than BOOTP for 'eth1'?"
+        active_if [CYGPKG_NET_DHCP ]
+        flavor bool 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH1_BOOTP_SHOW{
+        display "Show BOOTP/DHCP initialization values?"
+        flavor bool 
+      }
+    }
+
+    option CYGHWR_NET_DRIVER_ETH1_IPV6_PREFIX{
+      display "Static IPv6 address prefix for 'eth1'"
+      active_if [CYGPKG_NET_INET6 ]
+      flavor booldata 
+    }
+
+    component CYGHWR_NET_DRIVER_ETH1_ADDRS{
+      display "Address setups for 'eth1'"
+      implements [CYGHWR_NET_DRIVER_ETH1_SETUP ]
+
+      option CYGHWR_NET_DRIVER_ETH1_ADDRS_IP{
+        display "IP address for 'eth1'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH1_ADDRS_NETMASK{
+        display "Network mask address for 'eth1'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH1_ADDRS_BROADCAST{
+        display "Broadcast address for 'eth1'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH1_ADDRS_GATEWAY{
+        display "Gateway/router IP address for 'eth1'"
+        flavor data 
+      }
+
+      option CYGHWR_NET_DRIVER_ETH1_ADDRS_SERVER{
+        display "Server IP address for 'eth1'"
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_NET_FREEBSD_STACK{
+    display "FreeBSD networking stack"
+    requires [CYGPKG_IO ]
+    requires [CYGPKG_ISOINFRA ]
+    requires [CYGINT_ISO_C_TIME_TYPES ]
+    requires [CYGINT_ISO_STRERROR ]
+    requires [CYGINT_ISO_ERRNO ]
+    requires [CYGINT_ISO_ERRNO_CODES ]
+    requires [CYGINT_ISO_MALLOC ]
+    requires [CYGINT_ISO_STRING_BSD_FUNCS ]
+    requires [CYGPKG_IO_FILEIO ]
+    implements [CYGPKG_NET_STACK ]
+    implements [CYGPKG_NET_STACK_INET ]
+    implements [CYGPKG_NET_STACK_INET6 ]
+    implements [CYGINT_ISO_BSDTYPES ]
+    requires [CYGBLD_ISO_BSDTYPES_HEADER == "<sys/bsdtypes.h>" ]
+
+    interface CYGINT_NET_IPSEC_BSD_CRYPTO{
+      display "Implementation of BSD CRYPTO functions"
+    }
+
+    component CYGPKG_NET_FREEBSD_INET{
+      display "INET support"
+      active_if [CYGPKG_NET_INET ]
+      flavor bool 
+
+      option CYGPKG_NET_FREEBSD_INET6{
+        display "IPv6 support"
+        active_if [CYGPKG_NET_INET6 ]
+        flavor bool 
+      }
+
+      option CYGPKG_NET_FREEBSD_IPSEC{
+        display "IPSEC support"
+        requires [CYGPKG_COMPRESS_ZLIB ]
+        implements [CYGPKG_NET_STACK_IPSEC ]
+        flavor bool 
+      }
+
+      option CYGPKG_NET_FREEBSD_IPSEC6{
+        display "IPSEC support for IPv6"
+        active_if [CYGPKG_NET_INET6 ]
+        active_if [CYGPKG_NET_FREEBSD_IPSEC ]
+        flavor bool 
+      }
+
+      option CYGPKG_NET_FREEBSD_SYSCTL{
+        display "sysctl support"
+        flavor bool 
+      }
+
+      option CYGPKG_NET_RANDOM_PORTS{
+        display "Random source ports"
+        flavor bool 
+      }
+    }
+
+    option CYGPKG_NET_NGIF{
+      display "Number of GIF things"
+      flavor data 
+    }
+
+    option CYGPKG_NET_NLOOP{
+      display "Number of loopback interfaces"
+      flavor data 
+    }
+
+    option CYGPKG_NET_FREEBSD_LOGGING{
+      display "Error and warning log control"
+      flavor booldata 
+    }
+
+    option CYGPKG_NET_FORCE_SERIAL_CONSOLE{
+      display "Force use of serial console during initialization"
+      flavor bool 
+    }
+
+    option CYGPKG_NET_MEM_USAGE{
+      display "Memory designated for networking buffers."
+      flavor data 
+    }
+
+    option CYGPKG_NET_MEMPOOL_SIZE{
+      display "Memory designated for network dynamically allocated memory"
+      flavor data 
+    }
+
+    option CYGPKG_NET_MBUFS_SIZE{
+      display "MBUFs memory size"
+      flavor data 
+    }
+
+    option CYGPKG_NET_CLUSTERS_SIZE{
+      display "Clusters size"
+      flavor data 
+    }
+
+    option CYGPKG_NET_MAXSOCKETS{
+      display "Max number of open sockets"
+      flavor data 
+    }
+
+    option CYGPKG_NET_NUM_WAKEUP_EVENTS{
+      display "Number of supported pending network events"
+      flavor data 
+    }
+
+    component CYGPKG_NET_THREAD{
+      display "Background network processing thread options"
+      flavor none 
+
+      option CYGPKG_NET_THREAD_PRIORITY{
+        display "Priority level for background network processing"
+        flavor data 
+      }
+
+      option CYGNUM_NET_THREAD_STACKSIZE{
+        display "Stack size for backgound network processing"
+        flavor data 
+      }
+    }
+
+    component CYGPKG_NET_FAST_THREAD{
+      display "Fast network processing thread options"
+      flavor none 
+
+      option CYGPKG_NET_FAST_THREAD_PRIORITY{
+        display "Priority level for fast network processing"
+        flavor data 
+      }
+
+      option CYGNUM_NET_FAST_THREAD_STACKSIZE{
+        display "Stack size for fast network processing"
+        flavor data 
+      }
+    }
+
+    component CYGPKG_NET_FAST_THREAD_TICKLE_DEVS{
+      display "Fast network processing thread 'tickles' drivers"
+
+      option CYGNUM_NET_FAST_THREAD_TICKLE_DEVS_DELAY{
+        display "Delay in kernel clocks of tickle loop"
+        flavor data 
+      }
+    }
+
+    component CYGPKG_NET_FREEBSD_STACK_OPTIONS{
+      display "Networking support build options"
+      flavor none 
+
+      option CYGOPT_NET_FREEBSD_STACK_ACCEPT_UNICAST{
+        display "Accept unicast packets on INADDR_ANY interfaces"
+        flavor bool 
+      }
+
+      option CYGPKG_NET_FREEBSD_STACK_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_NET_FREEBSD_STACK_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+    }
+
+    option CYGPKG_NET_FREEBSD_STACK_TESTS{
+      display "FreeBSD network stack tests"
+      calculated [CYGPKG_NET_FREEBSD_SYSCTL ? "tests/sysctl1" : "" ]
+      flavor data 
+    }
+  }
+
+  package CYGPKG_SNMPAGENT{
+    display "SNMP agent"
+    requires [CYGPKG_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_STDLIB_STRCONV ]
+    requires [0 != CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_MALLOC ]
+    requires [0 != CYGINT_ISO_ERRNO ]
+    requires [0 != CYGINT_ISO_ERRNO_CODES ]
+    requires [CYGPKG_NET ]
+    requires [CYGPKG_SNMPLIB ]
+
+    component CYGPKG_SNMPAGENT_SYSTEM_MIB{
+      display "System MIB defaults"
+      flavor none 
+
+      option CYGDAT_NET_SNMPAGENT_SYS_CONTACT{
+        display "Contact address"
+        flavor data 
+      }
+
+      option CYGDAT_NET_SNMPAGENT_SYS_LOC{
+        display "System location"
+        flavor data 
+      }
+
+      option CYGDAT_NET_SNMPAGENT_VERS_DESC{
+        display "Version description"
+        flavor data 
+      }
+
+      option CYGDAT_NET_SNMPAGENT_SYS_NAME{
+        display "System name "
+        flavor data 
+      }
+    }
+
+    component CYGPKG_SNMPAGENT_OPTIONS{
+      display "SNMP agent build options"
+      flavor none 
+
+      option CYGPKG_SNMPAGENT_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_SNMPAGENT_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_SNMPAGENT_V3_SUPPORT{
+        display "SNMPv3 support package"
+        flavor bool 
+      }
+
+      component CYGPKG_SNMPAGENT_TESTS{
+        display "SNMP agent tests"
+        calculated ["tests/snmpping" ]
+        flavor data 
+
+        option CYGSEM_SNMPAGENT_TESTS_PROMISCUOUS{
+          display "Run SNMP agent tests in promiscuous mode"
+          flavor bool 
+        }
+
+        option CYGSEM_SNMPAGENT_TESTS_SNMPv3{
+          display "SNMP agent test for SNMP version 3"
+          active_if [CYGPKG_SNMPAGENT_V3_SUPPORT ]
+          flavor bool 
+        }
+
+        option CYGNUM_SNMPAGENT_TESTS_ITERATIONS{
+          display "Number of test iterations for SNMP agent test"
+          flavor data 
+        }
+      }
+    }
+  }
+
+  package CYGPKG_SNMPLIB{
+    display "SNMP library"
+    requires [CYGPKG_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_STRING_MEMFUNCS ]
+    requires [0 != CYGINT_ISO_STDLIB_STRCONV ]
+    requires [0 != CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_MALLOC ]
+    requires [0 != CYGINT_ISO_ERRNO ]
+    requires [0 != CYGINT_ISO_ERRNO_CODES ]
+    requires [CYGPKG_NET ]
+    requires [CYGPKG_POSIX_TIMERS ]
+
+    option CYGDBG_NET_SNMPLIB_DEBUG{
+      display "Enable SNMP debug printout"
+      flavor bool 
+    }
+
+    component CYGPKG_SNMPLIB_FILESYSTEM_SUPPORT{
+      display "SNMP file-system options"
+      active_if [CYGPKG_IO_FILEIO ]
+      active_if [CYGINT_IO_FILEIO_FS > 0 ]
+      flavor bool 
+
+      option CYGPKG_SNMPLIB_PERSISTENT_FILESYSTEM{
+        display "Persistent filesystem support"
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_SNMPLIB_OPTIONS{
+      display "SNMP library build options"
+      flavor none 
+
+      option CYGPKG_SNMPLIB_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_SNMPLIB_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_HTTPD{
+    display "HTTP Daemon"
+    requires [CYGPKG_IO ]
+    requires [0 != CYGINT_ISO_STDLIB_STRCONV ]
+    requires [0 != CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_ERRNO ]
+    requires [0 != CYGINT_ISO_ERRNO_CODES ]
+    requires [CYGPKG_NET ]
+
+    option CYGNUM_HTTPD_SERVER_PORT{
+      display "HTTP port"
+      flavor data 
+    }
+
+    option CYGDAT_HTTPD_SERVER_ID{
+      display "HTTP server ID"
+      flavor data 
+    }
+
+    option CYGNUM_HTTPD_THREAD_COUNT{
+      display "HTTPD thread count"
+      flavor data 
+    }
+
+    option CYGNUM_HTTPD_THREAD_PRIORITY{
+      display "HTTPD thread priority"
+      legal_values [0 to CYGNUM_KERNEL_SCHED_PRIORITIES ]
+      flavor data 
+    }
+
+    option CYGNUM_HTTPD_THREAD_STACK_SIZE{
+      display "HTTPD thread stack size"
+      flavor data 
+    }
+
+    option CYGNUM_HTTPD_SERVER_BUFFER_SIZE{
+      display "HTTPD server buffer size"
+      flavor data 
+    }
+
+    option CYGNUM_HTTPD_SERVER_AUTO_START{
+      display "Autostart HTTPD"
+    }
+
+    option CYGNUM_HTTPD_SERVER_DELAY{
+      display "HTTPD server startup delay"
+      flavor data 
+    }
+
+    component CYGPKG_HTTPD_MONITOR{
+      display "Simple Web System Monitor"
+    }
+
+    component CYGPKG_HTTPD_TESTS{
+      display "HTTPD tests"
+      calculated ["tests/httpd1" ]
+      flavor data 
+    }
+
+    component CYGPKG_HTTPD_OPTIONS{
+      display "HTTP server build options"
+      flavor none 
+
+      option CYGPKG_HTTPD_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_HTTPD_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_NET_FTPCLIENT{
+    display "FTP client"
+    requires [CYGPKG_IO ]
+    requires [CYGPKG_NET ]
+    requires [CYGPKG_MEMALLOC ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_STRING_MEMFUNCS ]
+    requires [0 != CYGINT_ISO_STDLIB_STRCONV ]
+    requires [0 != CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [0 != CYGINT_ISO_STRING_STRFUNCS ]
+    requires [0 != CYGINT_ISO_ERRNO ]
+    requires [0 != CYGINT_ISO_ERRNO_CODES ]
+    requires [0 != CYGINT_ISO_CTYPE ]
+
+    option CYGNUM_NET_FTPCLIENT_BUFSIZE{
+      display "Size of internal buffers used during FTP transfers"
+      flavor data 
+    }
+
+    component CYGPKG_NET_FTPCLIENT_OPTIONS{
+      display "FTP client build options"
+      flavor none 
+
+      option CYGPKG_NET_FTPCLIENT_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_NET_FTPCLIENT_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+    }
+
+    option CYGPKG_NET_FTPCLIENT_TESTS{
+      display "FTP Client tests"
+      calculated ["tests/ftpclient1" ]
+      flavor data 
+    }
+  }
+
+  package CYGPKG_PPP{
+    display "PPP daemon"
+    requires [CYGPKG_IO ]
+    requires [CYGPKG_IO_SERIAL ]
+    requires [CYGPKG_IO_SERIAL_DEVICES ]
+    requires [CYGOPT_IO_SERIAL_SUPPORT_NONBLOCKING ]
+    requires [CYGPKG_NET ]
+    requires [CYGPKG_IO_SERIAL_FLOW_CONTROL ]
+    requires [CYGPKG_POSIX_CLOCKS ]
+
+    option CYGNUM_PPP_PPPD_THREAD_PRIORITY{
+      display "PPP thread priority"
+      legal_values [0 to CYGNUM_KERNEL_SCHED_PRIORITIES ]
+      flavor data 
+    }
+
+    component CYGPKG_PPP_DEBUG_WARN_ONLY{
+      display "PPP protocol debug error only"
+    }
+
+    component CYGPKG_PPP_AUTH{
+      display "PPP authentication defaults"
+      flavor none 
+
+      option CYGPKG_PPP_AUTH_DEFAULT_USER{
+        display "Default user name"
+        flavor data 
+      }
+
+      option CYGPKG_PPP_AUTH_DEFAULT_PASSWD{
+        display "Default password"
+        flavor data 
+      }
+    }
+
+    option CYGPKG_PPP_DEFAULT_DIALUP_NUMBER{
+      display "Default dialup number"
+      flavor data 
+    }
+
+    component CYGPKG_PPP_PAP{
+      display "PAP support"
+    }
+
+    component CYGPKG_PPP_CHAP{
+      display "CHAP support"
+    }
+
+    component CYGPKG_PPP_COMPRESSION{
+      display "PPP compression options"
+
+      option PPP_BSDCOMP{
+        display "Enable BSD compression"
+      }
+
+      option PPP_DEFLATE{
+        display "Enable ZLIB compression"
+      }
+
+      option PPP_INHIBIT_OLD_VJ_COMPRESSION{
+        display "Inhibit older-style VJ compression"
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_PPP_CHAT{
+      display "Chat script support"
+
+      option CYGNUM_PPP_CHAT_ABORTS_MAX{
+        display "Maximum number of ABORT strings"
+        legal_values [5 to 500 ]
+        flavor data 
+      }
+
+      option CYGNUM_PPP_CHAT_ABORTS_SIZE{
+        display "Maximum size of each ABORT string"
+        legal_values [10 to 100 ]
+        flavor data 
+      }
+
+      option CYGNUM_PPP_CHAT_STRING_LENGTH{
+        display "Maximum size of CHAT strings"
+        legal_values [32 to 32768 ]
+        flavor data 
+      }
+    }
+
+    component CYGPKG_PPP_WORKAROUNDS{
+      display "PPP workarounds for bugs in other implementations"
+      flavor none 
+
+      option CYGPKT_PPP_WORKAROUNDS_START_FLAG{
+        display "Add a start flag to every packet"
+        flavor bool 
+      }
+    }
+
+    component CYGPKG_PPP_NEGOTIATE_OPTIONS{
+      display "PPP negotiation options"
+      flavor none 
+
+      option CYGOPT_PPP_NS_NEGOTIATE{
+        display "Name server support"
+        flavor bool 
+      }
+
+      option CYGOPT_PPP_DNS_CONFIGURE{
+        display "Allow the PPP code to configure the resolver"
+      }
+    }
+
+    component CYGPKG_PPP_OPTIONS{
+      display "PPP build options"
+      flavor none 
+
+      option CYGPKG_PPP_CFLAGS_ADD{
+        display "Additional compiler flags"
+        flavor data 
+      }
+
+      option CYGPKG_PPP_CFLAGS_REMOVE{
+        display "Suppressed compiler flags"
+        flavor data 
+      }
+    }
+
+    option CYGPKG_PPP_TESTS{
+      display "PPP tests"
+      calculated ["tests/ppp_up " . "tests/ppp_updown " . "tests/chat " . "tests/ppp_auth " . ((CYGPKG_PPP_TESTS_ALL) ? "tests/isp " . "tests/tcp_echo " . "tests/nc_test_slave " : "" ) ]
+      flavor data 
+    }
+
+    option CYGPKG_PPP_TESTS_ALL{
+      display "Include all PPP tests"
+    }
+
+    option CYGPKG_PPP_TEST_DEVICE{
+      display "PPP test device"
+      flavor data 
+    }
+
+    component CYGPKG_PPP_TESTS_AUTOMATE{
+      display "PPP test automation"
+
+      option CYGDAT_PPP_TEST_BAUD_RATES{
+        display "PPP test automation baud rates"
+        flavor data 
+      }
+    }
+
+    option CYGBLD_PPP_WINDOWS_TELNET_APP{
+      display "Build complete eCos PPP client interfacing to Windows PPP server"
+    }
+  }
+}
+
+package CYGPKG_NS_DNS{
+  display "DNS client"
+
+  option CYGPKG_NS_DNS_BUILD{
+    display "Build DNS NS client package"
+    implements [CYGINT_ISO_DNS ]
+    requires [CYGBLD_ISO_DNS_HEADER == "<cyg/ns/dns/dns.h>" ]
+    requires [CYGPKG_NET ]
+    requires [CYGINT_ISO_CTYPE ]
+    requires [CYGINT_ISO_MALLOC ]
+    requires [CYGINT_ISO_STRING_STRFUNCS ]
+    requires [CYGSEM_KERNEL_THREADS_DESTRUCTORS_PER_THREAD ]
+  }
+
+  component CYGPKG_NS_DNS_DEFAULT{
+    display "Provide a hard coded default server address"
+    active_if [CYGPKG_NS_DNS_BUILD ]
+    flavor bool 
+
+    option CYGDAT_NS_DNS_DEFAULT_SERVER{
+      display "IP address of the default DNS server"
+      flavor data 
+    }
+  }
+
+  component CYGPKG_NS_DNS_DOMAINNAME{
+    display "Provide a hard coded default domain name"
+    active_if [CYGPKG_NS_DNS_BUILD ]
+    flavor bool 
+
+    option CYGDAT_NS_DNS_DOMAINNAME_NAME{
+      display "Domain name for this device"
+      flavor data 
+    }
+  }
+
+  option CYGNUM_NS_DNS_GETADDRINFO_ADDRESSES{
+    display "Max number of results for getaddrinfo"
+    flavor data 
+  }
+
+  option CYGOPT_NS_DNS_FIRST_FAMILY{
+    display "AF_INET or AF_INET6 first in the getaddrinfo list"
+    active_if [CYGPKG_NET_INET6 ]
+    legal_values ["AF_INET4" "AF_INET6" ]
+    flavor data 
+  }
+
+  component CYGPKG_NS_DNS_OPTIONS{
+    display "DNS support build options"
+    flavor none 
+
+    option CYGPKG_NS_DNS_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_NS_DNS_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+
+  option CYGPKG_NS_DNS_TESTS{
+    display "DNS test"
+    active_if [CYGPKG_NS_DNS_BUILD ]
+    calculated ["tests/dns1" ]
+    flavor data 
+  }
+
+  option CYGPKG_NS_DNS_TESTS_LUNN{
+    display "Use Andrew Lunn's DNS server for tests"
+  }
+
+  option CYGPKG_NS_DNS_TESTS_ELSIS{
+    display "Iztok Zupet DNS server at Elsis for tests"
+  }
+}
+
+package CYGPKG_CRC{
+  display "Compute CRCs"
+
+  option CYGPKG_CRC_TESTS{
+    display "POSIX CRC tests"
+    calculated ["tests/crc_test" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_CPULOAD{
+  display "Measure the current CPU load"
+  requires [CYGPKG_KERNEL ]
+  requires [!CYGPKG_KERNEL_SMP_SUPPORT ]
+
+  option CYGPKG_CPULOAD_TESTS{
+    display "CPU load measurement tests"
+    calculated ["tests/cpuload" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_NET_SNTP{
+  display "Simple Network Time Protocol Client (SNTP)"
+  requires [CYGPKG_NET ]
+  requires [CYGPKG_LIBC_TIME ]
+  requires [CYGSEM_LIBC_TIME_TIME_WORKING ]
+  requires [CYGSEM_LIBC_TIME_SETTIME_WORKING ]
+
+  component CYGPKG_NET_SNTP_UNICAST{
+    display "Enable SNTP client unicast support"
+    flavor bool 
+
+    option CYGNUM_NET_SNTP_UNICAST_MAXDHCP{
+      display "Maximum number of NTP servers to use from DHCP"
+      requires [CYGPKG_NET_DHCP ]
+      legal_values [1 to 8 ]
+      flavor booldata 
+    }
+  }
+
+  component CYGPKG_NET_SNTP_OPTIONS{
+    display "SNTP support build options"
+    flavor none 
+
+    option CYGPKG_NET_SNTP_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_NET_SNTP_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+
+  option CYGPKG_NET_SNTP_TESTS{
+    display "sntp tests"
+    calculated [CYGPKG_NET_BUILD_HW_TESTS ? "tests/sntp1" : "" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_IO_FLASH{
+  display "FLASH device drivers"
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGINT_ISO_STRING_STRFUNCS ]
+
+  interface CYGHWR_IO_FLASH_DEVICE{
+    display "Hardware FLASH device drivers"
+    requires [CYGHWR_IO_FLASH_DEVICE >= 1 ]
+  }
+
+  interface CYGHWR_IO_FLASH_BLOCK_LOCKING{
+    display "Hardware can support block locking"
+    flavor booldata 
+  }
+
+  interface CYGHWR_IO_FLASH_INDIRECT_READS{
+    display "Hardware requires indirect reads"
+    flavor booldata 
+  }
+
+  interface CYGHWR_IO_FLASH_DEVICE_NEEDS_CACHE_HANDLED{
+    display "Device driver needs cache handled centrally"
+    flavor booldata 
+  }
+
+  interface CYGHWR_IO_FLASH_DEVICE_LEGACY{
+    display "Hardware driver uses the legacy interface"
+    requires [CYGHWR_IO_FLASH_DEVICE_LEGACY <= 1 ]
+    implements [CYGHWR_IO_FLASH_DEVICE_NEEDS_CACHE_HANDLED ]
+    flavor booldata 
+  }
+
+  option CYGSEM_IO_FLASH_READ_INDIRECT{
+    display "Legacy device driver uses indirect reads."
+    active_if [CYGHWR_IO_FLASH_DEVICE_LEGACY ]
+    requires [!CYGSEM_IO_FLASH_VERIFY_PROGRAM ]
+    flavor bool 
+  }
+
+  option CYGSEM_IO_FLASH_CHATTER{
+    display "Display status messages during flash operations"
+    flavor bool 
+  }
+
+  option CYGSEM_IO_FLASH_VERIFY_PROGRAM{
+    display "Verify data programmed to flash"
+    active_if [CYGHWR_IO_FLASH_INDIRECT_READS < CYGHWR_IO_FLASH_DEVICE ]
+    flavor bool 
+  }
+
+  option CYGSEM_IO_FLASH_SOFT_WRITE_PROTECT{
+    display "Platform has flash soft DIP switch write-protect"
+    flavor bool 
+  }
+
+  component CYGPKG_IO_FLASH_BLOCK_DEVICE{
+    display "Provide /dev block devices"
+    active_if [CYGPKG_IO ]
+    requires [CYGINT_IO_FLASH_BLOCK_DEVICE_METHODS > 0 ]
+    flavor bool 
+
+    interface CYGINT_IO_FLASH_BLOCK_DEVICE_METHODS{
+      display "Number of methods to reference Flash"
+      flavor bool 
+    }
+
+    option CYGNUM_IO_FLASH_BLOCK_DEVICES{
+      display "Number of /dev/flash/ device slots"
+      flavor data 
+    }
+
+    option CYGFUN_IO_FLASH_BLOCK_FROM_FIS{
+      display "Access using named FIS areas"
+      requires [CYGSEM_HAL_VIRTUAL_VECTOR_SUPPORT ]
+      implements [CYGINT_IO_FLASH_BLOCK_DEVICE_METHODS ]
+    }
+
+    option CYGFUN_IO_FLASH_BLOCK_FROM_DEVOFFSET{
+      display "Access using device numbers,offsets"
+      implements [CYGINT_IO_FLASH_BLOCK_DEVICE_METHODS ]
+    }
+  }
+
+  option CYGSEM_IO_FLASH_LEGACY_API{
+    display "Provide the legacy user API"
+    flavor bool 
+  }
+
+  component CYGPKG_IO_FLASH_BLOCK_DEVICE_LEGACY{
+    display "Provide /dev block devices (legacy format)"
+    active_if [CYGPKG_IO ]
+    flavor bool 
+
+    component CYGPKG_IO_FLASH_BLOCK_DEVICE_1{
+      display "Provide block device 1"
+
+      option CYGDAT_IO_FLASH_BLOCK_DEVICE_NAME_1{
+        display "Name of flash block device 1"
+        flavor data 
+      }
+
+      interface CYGINT_IO_FLASH_BLOCK_CFG_1{
+        requires [1 == CYGINT_IO_FLASH_BLOCK_CFG_1 ]
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_STATIC_1{
+        display "Static configuration via offset"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_1 ]
+
+        option CYGNUM_IO_FLASH_BLOCK_OFFSET_1{
+          display "Start offset from flash base"
+          requires [0xFFFFFFFF != CYGNUM_IO_FLASH_BLOCK_OFFSET_1 ]
+          flavor data 
+        }
+
+        option CYGNUM_IO_FLASH_BLOCK_LENGTH_1{
+          display "Length"
+          requires [0 != CYGNUM_IO_FLASH_BLOCK_OFFSET_1 ]
+          flavor data 
+        }
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_STATIC_ABSOLUTE_1{
+        display "Static configuration via absolute address"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_1 ]
+
+        option CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_START_1{
+          display "Start offset from flash base"
+          requires [0xFFFFFFFF != CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_START_1 ]
+          flavor data 
+        }
+
+        option CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_LENGTH_1{
+          display "Length"
+          requires [0 != CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_LENGTH_1 ]
+          flavor data 
+        }
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_FIS_1{
+        display "Configuration from FIS"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_1 ]
+
+        component CYGDAT_IO_FLASH_BLOCK_FIS_NAME_1{
+          display "Name of FIS entry"
+          requires ["" != CYGDAT_IO_FLASH_BLOCK_FIS_NAME_1 ]
+          flavor data 
+        }
+      }
+    }
+
+    component CYGPKG_IO_FLASH_BLOCK_DEVICE_2{
+      display "Provide block device 2"
+
+      option CYGDAT_IO_FLASH_BLOCK_DEVICE_NAME_2{
+        display "Name of flash block device 2"
+        flavor data 
+      }
+
+      interface CYGINT_IO_FLASH_BLOCK_CFG_2{
+        requires [1 == CYGINT_IO_FLASH_BLOCK_CFG_2 ]
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_STATIC_2{
+        display "Static configuration via offset"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_2 ]
+
+        option CYGNUM_IO_FLASH_BLOCK_OFFSET_2{
+          display "Start offset from flash base"
+          requires [0xFFFFFFFF != CYGNUM_IO_FLASH_BLOCK_OFFSET_2 ]
+          flavor data 
+        }
+
+        option CYGNUM_IO_FLASH_BLOCK_LENGTH_2{
+          display "Length"
+          requires [0 != CYGNUM_IO_FLASH_BLOCK_OFFSET_2 ]
+          flavor data 
+        }
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_STATIC_ABSOLUTE_2{
+        display "Static configuration via absolute address"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_2 ]
+
+        option CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_START_2{
+          display "Start offset from flash base"
+          requires [0xFFFFFFFF != CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_START_2 ]
+          flavor data 
+        }
+
+        option CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_LENGTH_2{
+          display "Length"
+          requires [0 != CYGNUM_IO_FLASH_BLOCK_ABSOLUTE_LENGTH_2 ]
+          flavor data 
+        }
+      }
+
+      component CYGNUM_IO_FLASH_BLOCK_CFG_FIS_2{
+        display "Configuration from FIS"
+        implements [CYGINT_IO_FLASH_BLOCK_CFG_2 ]
+
+        component CYGDAT_IO_FLASH_BLOCK_FIS_NAME_2{
+          display "Name of FIS entry"
+          requires ["" != CYGDAT_IO_FLASH_BLOCK_FIS_NAME_2 ]
+          flavor data 
+        }
+      }
+    }
+  }
+
+  component CYGPKG_IO_FLASH_OPTIONS{
+    display "Flash device driver build options"
+    flavor none 
+
+    option CYGPKG_IO_FLASH_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_FLASH_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    component CYGPKG_IO_FLASH_TESTS{
+      display "Flash device driver tests"
+      calculated [(CYGSEM_IO_FLASH_LEGACY_API ? "tests/flash1" : "") . (CYGPKG_IO_FLASH_BLOCK_DEVICE ? " tests/flashdev" : "") ]
+      flavor data 
+
+      option CYGNUM_IO_FLASH_TEST_OFFSET{
+        display "Start offset from flash base"
+        flavor data 
+      }
+
+      option CYGNUM_IO_FLASH_TEST_LENGTH{
+        display "Length"
+        flavor data 
+      }
+    }
+  }
+
+  package CYGPKG_DEVS_FLASH_INTEL_28FXXX{
+    display "Intel FlashFile FLASH memory support"
+    active_if [CYGPKG_IO_FLASH ]
+    active_if [CYGINT_DEVS_FLASH_INTEL_28FXXX_REQUIRED ]
+    implements [CYGHWR_IO_FLASH_DEVICE ]
+    implements [CYGHWR_IO_FLASH_DEVICE_LEGACY ]
+    requires [CYGINT_DEVS_FLASH_INTEL_VARIANTS != 0 ]
+
+    option CYGNUM_DEVS_FLASH_INTEL_28FXXX_TIMEOUT{
+      display "Timeout for flash operations (simple counter based)"
+      legal_values [1000000 to 1000000000 ]
+      flavor data 
+    }
+
+    interface CYGINT_DEVS_FLASH_INTEL_VARIANTS{
+      display "Number of included variants"
+    }
+
+    interface CYGHWR_DEVS_FLASH_INTEL_BUFFERED_WRITES{
+      display "Must support buffered writes"
+      flavor booldata 
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F160S5{
+      display "Intel 28F160S5 flash memory support"
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+      implements [CYGHWR_DEVS_FLASH_INTEL_BUFFERED_WRITES ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F160B3T{
+      display "Intel 28F160B3T flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F160C3B{
+      display "Intel 28F160C3B flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F320B3{
+      display "Intel 28F320B3 flash memory support"
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F320C3{
+      display "Intel 28F320C3 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F320S3{
+      display "Intel 28F320S3 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F128K3{
+      display "Intel 28F128K3 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F128P30{
+      display "Intel 28F128P30 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+      implements [CYGHWR_DEVS_FLASH_INTEL_BUFFERED_WRITES ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F128J3{
+      display "Intel 28F128J3 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F320J3{
+      display "Intel 28F320J3 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_INTEL_28F800B5{
+      display "Intel 28F800B5 flash memory support"
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_SHARP_LH28F016SCT_Z4{
+      display "Sharp LH28F016SCT-Z4 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+
+    option CYGHWR_DEVS_FLASH_SHARP_LH28F016SCT_95{
+      display "Sharp LH28F016SCT-95 flash memory support"
+      implements [CYGHWR_IO_FLASH_BLOCK_LOCKING ]
+      implements [CYGINT_DEVS_FLASH_INTEL_VARIANTS ]
+    }
+  }
+
+  package CYGPKG_DEVS_FLASH_ARM_INTEGRATOR{
+    display "ARM Integrator FLASH memory support"
+    active_if [CYGPKG_IO_FLASH ]
+    requires [CYGPKG_HAL_ARM_INTEGRATOR ]
+    implements [CYGINT_DEVS_FLASH_INTEL_28FXXX_REQUIRED ]
+    requires [CYGHWR_DEVS_FLASH_INTEL_28F320S3 ]
+
+    interface CYGINT_DEVS_FLASH_INTEL_28FXXX_REQUIRED{
+      display "Generic Intel FlashFile driver required"
+    }
+  }
+}
+
+package CYGPKG_FS_RAM{
+  display "RAM filesystem"
+  requires [CYGPKG_IO_FILEIO ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_ERROR ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  implements [CYGINT_IO_FILEIO_FS ]
+  requires [CYGINT_FS_RAM_ALLOC == 1 ]
+
+  interface CYGINT_FS_RAM_ALLOC{
+    display "Functions to allocate RAM"
+  }
+
+  component CYGPKG_FS_RAM_SIMPLE{
+    display "Simple, malloc() based, implementation"
+    requires [CYGINT_ISO_MALLOC != 0 ]
+    active_if [!CYGPKG_FS_RAM_BLOCKS ]
+    implements [CYGINT_FS_RAM_ALLOC ]
+
+    option CYGNUM_RAMFS_REALLOC_INCREMENT{
+      display "Size of file data storage increment"
+      legal_values [64 to 32768 ]
+      flavor data 
+    }
+  }
+
+  component CYGPKG_FS_RAM_BLOCKS{
+    display "Block-based RAM filesystem allocation"
+    active_if [!CYGPKG_FS_RAM_SIMPLE ]
+    implements [CYGINT_FS_RAM_ALLOC ]
+
+    option CYGNUM_RAMFS_BLOCK_SIZE{
+      display "Size of file data storage block"
+      legal_values [64 to 32768 ]
+      flavor data 
+    }
+
+    option CYGNUM_RAMFS_BLOCKS_DIRECT{
+      display "Directly referenced data storage blocks"
+      legal_values [0 to 32 ]
+      flavor data 
+    }
+
+    option CYGNUM_RAMFS_BLOCKS_INDIRECT1{
+      display "Single level indirect data storage blocks"
+      legal_values [0 to 32 ]
+      flavor data 
+    }
+
+    option CYGNUM_RAMFS_BLOCKS_INDIRECT2{
+      display "Two level indirect data storage blocks"
+      legal_values [0 to 32 ]
+      flavor data 
+    }
+
+    component CYGPKG_FS_RAM_BLOCKS_ARRAY{
+      display "Use block array rather than malloc()"
+
+      option CYGPKG_FS_RAM_BLOCKS_ARRAY_EXTERN{
+        display "Block array is external"
+      }
+
+      option CYGPKG_FS_RAM_BLOCKS_ARRAY_NAME{
+        display "Name of external block array"
+        active_if [CYGPKG_FS_RAM_BLOCKS_ARRAY_EXTERN ]
+        flavor data 
+      }
+
+      option CYGNUM_FS_RAM_BLOCKS_ARRAY_SIZE{
+        display "Size of blocks array"
+        legal_values [1 to 9999999999 ]
+        flavor data 
+      }
+    }
+  }
+
+  option CYGNUM_RAMFS_DIRENT_SIZE{
+    display "Directory entry size"
+    legal_values [16 to CYGNUM_RAMFS_BLOCK_SIZE ? CYGNUM_RAMFS_BLOCK_SIZE : 128 ]
+    flavor data 
+  }
+
+  option CYGPKG_FS_RAM_RET_DIRENT_DTYPE{
+    display "Support for fileio's struct dirent d_type field"
+    active_if [CYGPKG_FILEIO_DIRENT_DTYPE ]
+    flavor bool 
+  }
+
+  option CYGPKG_FS_RAM_TESTS{
+    display "RAM FS tests"
+    calculated ["tests/ramfs1 tests/ramfs2 tests/ramfs3" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_FS_ROM{
+  display "ROM filesystem"
+  requires [CYGPKG_IO_FILEIO ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  implements [CYGINT_IO_FILEIO_FS ]
+
+  option CYGBLD_FS_ROMFS_MK_ROMFS{
+    display "Build the tool used to build filesystems"
+    flavor bool 
+  }
+
+  option CYGPKG_FS_ROM_RET_DIRENT_DTYPE{
+    display "Support for fileio's struct dirent d_type field"
+    active_if [CYGPKG_FILEIO_DIRENT_DTYPE ]
+    flavor bool 
+  }
+
+  component CYGTST_ROMFS_BUILD_TESTS{
+    display "Build ROM filesystem tests"
+    requires [CYGINT_LIBC_STARTUP_CONTEXT ]
+    requires [CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [CYGINT_ISO_STRERROR ]
+    requires [CYGBLD_FS_ROMFS_MK_ROMFS ]
+    flavor bool 
+
+    option CYGPKG_FS_ROM_TESTS{
+      display "ROM filesystem tests"
+      calculated ["tests/romfs1" ]
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_FS_JFFS2{
+  display "JFFS2 filesystem"
+  requires [CYGPKG_IO_FILEIO ]
+  requires [CYGPKG_IO_FLASH ]
+  requires [CYGINT_ISO_MALLOC ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_ERROR ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGPKG_IO_FLASH_BLOCK_DEVICE ]
+  requires [CYGPKG_IO_FILEIO_INODE ]
+  requires [CYGPKG_LINUX_COMPAT ]
+  requires [CYGPKG_CRC ]
+  implements [CYGINT_IO_FILEIO_FS ]
+
+  component CYGOPT_FS_JFFS2_GCTHREAD{
+    display "Support garbage-collection background thread"
+    requires [CYGPKG_KERNEL ]
+    flavor bool 
+
+    option CYGNUM_JFFS2_GC_THREAD_PRIORITY{
+      display "jffs2 gc thread priority"
+      legal_values [0 to CYGNUM_KERNEL_SCHED_PRIORITIES ]
+      flavor data 
+    }
+
+    option CYGNUM_JFFS2_GC_THREAD_STACK_SIZE{
+      display "jffs2 gc stackstack size"
+      legal_values [2048 to 0x7fffffff ]
+      flavor data 
+    }
+
+    option CYGNUM_JFFS2_GS_THREAD_TICKS{
+      display "ticks between each garbage collect"
+      flavor data 
+    }
+  }
+
+  option CYGOPT_FS_JFFS2_WRITE{
+    display "Include write support for JFFS2"
+    flavor bool 
+  }
+
+  option CYGOPT_FS_JFFS2_NAND{
+    display "Support for NAND flash"
+    requires [0 ]
+    flavor bool 
+  }
+
+  option CYGOPT_FS_JFFS2_DEBUG{
+    display "Debug level"
+    legal_values [0 to 2 ]
+    flavor data 
+  }
+
+  component CYGOPT_FS_JFFS2_COMPRESS{
+    display "Compress data"
+    flavor bool 
+
+    option CYGOPT_FS_JFFS2_COMPRESS_ZLIB{
+      display "Compress data using zlib"
+      requires [CYGPKG_COMPRESS_ZLIB ]
+      flavor bool 
+    }
+
+    option CYGOPT_FS_JFFS2_COMPRESS_RTIME{
+      display "Compress data using rtime"
+      flavor bool 
+    }
+
+    option CYGOPT_FS_JFFS2_COMPRESS_RUBIN{
+      display "Compress data using rubin"
+      requires [CYGOPT_FS_JFFS2_COMPRESS ]
+      flavor bool 
+    }
+
+    option CYGOPT_FS_JFFS2_COMPRESS_CMODE{
+      display "Set the default compression mode"
+      legal_values ["NONE" "PRIORITY" "SIZE" ]
+      flavor data 
+    }
+  }
+
+  option CYGNUM_FS_JFFS2_RAW_NODE_REF_CACHE_POOL_SIZE{
+    display "Memory pool size"
+    flavor data 
+  }
+
+  option CYGPKG_FS_JFFS2_CFLAGS_ADD{
+    display "Additional compiler flags"
+    flavor data 
+  }
+
+  option CYGPKG_FS_JFFS2_CFLAGS_REMOVE{
+    display "Suppressed compiler flags"
+    flavor data 
+  }
+
+  option CYGPKG_FS_JFFS2_RET_DIRENT_DTYPE{
+    display "Support for fileio's struct dirent d_type field"
+    active_if [CYGPKG_FILEIO_DIRENT_DTYPE ]
+    flavor bool 
+  }
+
+  option CYGPKG_FS_JFFS2_TESTS{
+    display "JFFS2 FS tests"
+    calculated ["tests/jffs2_1 tests/jffs2_2 tests/jffs2_3" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_LINUX_COMPAT{
+  display "Linux compatibility layer"
+
+  option CYGNUM_LINUX_COMPAT_PAGE_SIZE_EXPONENT{
+    display "Define page size"
+    legal_values [10 to 16 ]
+    flavor data 
+  }
+}
+
+package CYGPKG_COMPRESS_ZLIB{
+  display "Zlib compress and decompress package"
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_CRC ]
+
+  interface CYGINT_COMPRESS_ZLIB_LOCAL_ALLOC{
+    display "Override memory allocation routines."
+  }
+
+  option CYGSEM_COMPRESS_ZLIB_DEFLATE_MAKES_GZIP{
+    display "Should deflate() produce 'gzip' compatible output?"
+    flavor bool 
+  }
+
+  option CYGSEM_COMPRESS_ZLIB_NEEDS_MALLOC{
+    display "Does this library need malloc?"
+    active_if [CYGINT_COMPRESS_ZLIB_LOCAL_ALLOC == 0 ]
+    requires [CYGPKG_MEMALLOC ]
+    flavor bool 
+  }
+
+  option CYGFUN_COMPRESS_ZLIB_GZIO{
+    display "Include stdio-like utility functions"
+    requires [CYGINT_ISO_STDIO_FILEPOS ]
+    requires [CYGINT_ISO_STRING_STRFUNCS ]
+    requires [CYGINT_ISO_STDIO_FORMATTED_IO ]
+    requires [CYGINT_ISO_STDIO_FILEACCESS ]
+    flavor bool 
+  }
+
+  component CYGPKG_COMPRESS_ZLIB_OPTIONS{
+    display "Zlib compress and decompress package build options"
+    flavor none 
+
+    option CYGPKG_COMPRESS_ZLIB_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_COMPRESS_ZLIB_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_COMPRESS_ZLIB_LDFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_COMPRESS_ZLIB_LDFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+
+  option CYGPKG_COMPRESS_ZLIB_TESTS{
+    display "zlib tests"
+    calculated ["tests/zlib1 tests/zlib2" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_VNC_SERVER{
+  display "VNC Server"
+  requires [(CYGNUM_VNC_SERVER_PIXEL_SELECTED <= 1) ]
+  requires [CYGPKG_IO ]
+  requires [(CYGPKG_NET || CYGPKG_NET_LWIP) ]
+
+  option CYGNUM_VNC_SERVER_PORT{
+    display "VNC server port number"
+    flavor data 
+  }
+
+  option CYGDAT_VNC_DESKTOP_NAME{
+    display "VNC Desktop Name"
+    flavor data 
+  }
+
+  option CYGNUM_VNC_SERVER_DELAY{
+    display "VNC server startup delay"
+    flavor data 
+  }
+
+  option CYGNUM_VNC_SERVER_PRIORITY{
+    display "VNC server thread priority"
+    legal_values [0 to CYGNUM_KERNEL_SCHED_PRIORITIES ]
+    flavor data 
+  }
+
+  component CYGPKG_VNC_SERVER_ENCODING_OPTIONS{
+    display "Encoding options"
+    flavor none 
+
+    component CYGNUM_VNC_SERVER_USE_CORRE_ENCODING{
+      display "Use CoRRE encoding"
+      flavor bool 
+
+      option CYGNUM_VNC_SERVER_CORRE_ENCODING_HACK{
+        display "Work-around CoRRE bug in vncviewer"
+        flavor bool 
+      }
+    }
+  }
+
+  component CYGPKG_VNC_SERVER_DISPLAY_OPTIONS{
+    display "Display options"
+    flavor none 
+
+    option CYGNUM_VNC_SERVER_FRAME_WIDTH{
+      display "Frame width in pixels"
+      flavor data 
+    }
+
+    option CYGNUM_VNC_SERVER_FRAME_HEIGHT{
+      display "Frame heigth in pixels"
+      flavor data 
+    }
+
+    option CYGNUM_VNC_SERVER_TILE_SIZE{
+      display "Display tile size"
+      legal_values [1 to 255 ]
+      flavor data 
+    }
+
+    interface CYGNUM_VNC_SERVER_PIXEL_SELECTED{
+      display "Pixel format support"
+    }
+
+    option CYGNUM_VNC_SERVER_PIXEL_RGB332{
+      display "RGB332 pixel format (8-bit)"
+      implements [CYGNUM_VNC_SERVER_PIXEL_SELECTED ]
+      flavor bool 
+    }
+
+    option CYGNUM_VNC_SERVER_PIXEL_BGR233{
+      display "BGR233 pixel format (8-bit)"
+      implements [CYGNUM_VNC_SERVER_PIXEL_SELECTED ]
+      flavor bool 
+    }
+
+    option CYGNUM_VNC_SERVER_PIXEL_RGB555{
+      display "RGB555 pixel format (16-bit)"
+      implements [CYGNUM_VNC_SERVER_PIXEL_SELECTED ]
+      flavor bool 
+    }
+
+    option CYGNUM_VNC_SERVER_PIXEL_RGB565{
+      display "RGB565 pixel format (16-bit)"
+      implements [CYGNUM_VNC_SERVER_PIXEL_SELECTED ]
+      flavor bool 
+    }
+
+    option CYGNUM_VNC_SERVER_PIXEL_TRUECOLOR0888{
+      display "True Color pixel format (32-bit)"
+      implements [CYGNUM_VNC_SERVER_PIXEL_SELECTED ]
+      flavor bool 
+    }
+
+    option CYGNUM_VNC_SERVER_INCLUDE_VNC_PRINTF{
+      display "Include VncPrintf() function"
+      requires [!CYGPKG_MICROWINDOWS ]
+      flavor bool 
+    }
+  }
+
+  component CYGPKG_VNC_SERVER_BUILD_MOUSE_DRIVER{
+    display "Build VNC mouse driver"
+    requires [CYGPKG_IO_FILEIO ]
+    flavor bool 
+
+    option CYGNUM_VNC_SERVER_MOUSE_EVENTS{
+      display "Number of mouse events for VNC server mouse driver to buffer."
+      flavor data 
+    }
+
+    option CYGDAT_VNC_SERVER_MOUSE_NAME{
+      display "Device name for the VNC server mouse driver"
+      flavor data 
+    }
+  }
+
+  component CYGPKG_VNC_SERVER_BUILD_KEYBOARD_DRIVER{
+    display "Build VNC keyboard driver"
+    requires [CYGPKG_IO_FILEIO ]
+    flavor bool 
+
+    option CYGNUM_VNC_SERVER_KEYBOARD_EVENTS{
+      display "Number of keyboard events for VNC server keyboard driver to buffer."
+      flavor data 
+    }
+
+    option CYGDAT_VNC_SERVER_KEYBOARD_NAME{
+      display "Device name for the VNC server keyboard driver"
+      flavor data 
+    }
+  }
+
+  option CYGPKG_VNC_SERVER_TESTS{
+    display "VNC server tests"
+    calculated ["tests/vnc-test" ]
+    flavor data 
+  }
+}
+
+package CYGPKG_IO_DISK{
+  display "Disk device drivers"
+  active_if [CYGPKG_IO ]
+  requires [CYGPKG_ERROR ]
+
+  component CYGPKG_IO_DISK_DEVICES{
+    display "Hardware disk device drivers"
+    flavor bool 
+  }
+
+  component CYGDBG_IO_DISK_DEBUG{
+    display "Enable debugging output"
+    flavor bool 
+  }
+
+  component CYGPKG_IO_DISK_OPTIONS{
+    display "Disk device driver build options"
+    flavor none 
+
+    option CYGPKG_IO_DISK_CFLAGS_ADD{
+      display "Additional compiler flags"
+      flavor data 
+    }
+
+    option CYGPKG_IO_DISK_CFLAGS_REMOVE{
+      display "Suppressed compiler flags"
+      flavor data 
+    }
+  }
+}
+
+package CYGPKG_BLOCK_LIB{
+  display "Block cache and access library"
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGPKG_MEMALLOC ]
+  requires [CYGPKG_LINUX_COMPAT ]
+  requires [CYGPKG_ERROR ]
+
+  option CYGIMP_BLOCK_LIB_STATISTICS{
+    display "Block access statistics support"
+    flavor bool 
+  }
+}
+
+package CYGPKG_FS_FAT{
+  display "FAT filesystem"
+  requires [CYGPKG_IO_FILEIO ]
+  requires [CYGPKG_ISOINFRA ]
+  requires [CYGINT_ISO_ERRNO ]
+  requires [CYGINT_ISO_ERRNO_CODES ]
+  requires [CYGPKG_MEMALLOC ]
+  requires [CYGPKG_BLOCK_LIB ]
+  implements [CYGINT_IO_FILEIO_FS ]
+
+  option CYGNUM_FS_FAT_NODE_HASH_TABLE_SIZE{
+    display "Node hash table size"
+    legal_values [1 to 9999999999 ]
+    flavor data 
+  }
+
+  option CYGNUM_FS_FAT_NODE_POOL_SIZE{
+    display "Node pool size"
+    legal_values [1 to 9999999999 ]
+    requires [CYGNUM_FS_FAT_NODE_POOL_SIZE >= (CYGNUM_FILEIO_NFILE+2) ]
+    flavor data 
+  }
+
+  option CYGNUM_FS_FAT_BLOCK_CACHE_MEMSIZE{
+    display "FAT block cache memory size"
+    legal_values [1 to 9999999999 ]
+    flavor data 
+  }
+
+  option CYGDBG_FS_FAT_NODE_CACHE_EXTRA_CHECKS{
+    display "Node cache extra checks"
+    active_if [CYGPKG_INFRA_DEBUG && CYGDBG_USE_ASSERTS ]
+    flavor bool 
+  }
+
+  option CYGCFG_FS_FAT_USE_ATTRIBUTES{
+    display "Support for FAT FS file attributes"
+    flavor bool 
+  }
+
+  option CYGPKG_FS_FAT_RET_DIRENT_DTYPE{
+    display "Support for fileio's struct dirent d_type field"
+    active_if [CYGPKG_FILEIO_DIRENT_DTYPE ]
+    flavor bool 
+  }
+
+  component CYGPKG_DEVS_DISK_TESTING{
+    display "Testing configuration"
+
+    option CYGDAT_DEVS_DISK_TEST_DEVICE{
+      display "Test device driver"
+      flavor data 
+    }
+
+    option CYGDAT_DEVS_DISK_TEST_DEVICE2{
+      display "Second Test device driver"
+      flavor data 
+    }
+  }
+
+  option CYGPKG_FS_FAT_TESTS{
+    display "FAT FS tests"
+    calculated ["tests/fatfs1" ]
+    flavor data 
+  }
+}
