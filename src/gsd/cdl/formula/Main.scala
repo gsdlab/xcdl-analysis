@@ -97,35 +97,35 @@ object Main {
     serialization.writeObject(constraints)
     serialization.close
   }
-  /**
-   * Node is enumeration if
-   * It's legal values are only list of strings
-   */
+  //mnovakovic - ENUMS
+  // TODO: Calculated enumerations!
   def isEnumeration(node: Node): Boolean = {
     if (node.legalValues != None) {
       val Some(LegalValuesOption(ranges)) = node.legalValues
       (ranges.collect{case range: SingleValueRange => range}.
-       filter(isCandidateForEnum).size == ranges.size)
+       filter(isCandidateForEnum).size > 0) // we have at least one string value
     } else
       false
   }
-
   /**
    * A SingleValueRange is a candidate for enum if
-   * it is not an integer vlaue, i.e. Only Strings are enums
+   * it's list of values has at least 1 String
    */
   def isCandidateForEnum(expr:SingleValueRange) : Boolean = {
     expr.v match {
       case StringLiteral(v) =>
-        val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
-        numberPattern.unapplySeq(v) match {
-          case Some(List(numberPart)) => false
-          case None => {
-              true
+              val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
+              numberPattern.unapplySeq(v) match {
+                      case Some(List(numberPart)) => false
+                      case None => {
+                            true
+                       }
             }
-        }
+      // Conditional will always return either String or Int
+      // TODO: In theory, it can also return boolean, which is an error, 
+      // but should we check for that?!?
+      case Conditional(cond, pass, fail) => true
       case _ => false
-
     }
   }
 
@@ -145,19 +145,18 @@ object Main {
     return result.toMap
   }
 
+  val enumVariables = mutable.HashSet[String]()
+  /**
+   * key   = node_id
+   * value = set of enumerated values
+   */
+  val enums = mutable.Map[String, mutable.Set[GExpression]]()
+
   def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
 
     var aliases = mutable.Map[String, GExpression]()
     val variables = mutable.Map[String, GVariable]()
     val errors = mutable.ListBuffer[Error]()
-
-    val enumVariables = mutable.HashSet[String]()
-    /**
-     * key   = node_id
-     * value = set of enumerated values
-     */
-    val enums = mutable.Map[String, mutable.Set[GExpression]]()
-
 
     case class GAliasReference(id:String) extends GExpression {
       def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (oldType & oldChildTypes.head) match {
@@ -206,35 +205,56 @@ object Main {
 
     allNodes.foreach(n => {
         if (isEnumeration(n)) {
-          enums += n.id -> scala.collection.mutable.HashSet[GExpression]()
+          enums += (n.id -> scala.collection.mutable.Set[GExpression]())
           val Some(LegalValuesOption(ranges)) = n.legalValues
           ranges.foreach((range:Range) => {
-              range.asInstanceOf[SingleValueRange].v match {
-                case StringLiteral(v) => {
-                    // if this enumeration has been encountered, add id to it
-                    if (enumVariables.contains(Utils.guardEnumValue(v))) {
-                      // TODO: get rid of all quotes in guardEnumValue function
-                      val newEnumName = Utils.guardEnumValue(v) + "_" + n.id
-                      enumVariables += newEnumName
-                      enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName)
-// CDL2GEnumExpression(StringLiteral(newEnumName))
-                      //throw new Exception(Utils.guardEnumValue(v))
-                    } else {
-                      enumVariables += Utils.guardEnumValue(v)
-                      enums(n.id) += GEnumLiteral(Utils.guardEnumValue(v), Utils.guardEnumValue(v))
-// CDL2GEnumExpression(StringLiteral(Utils.guardEnumValue(v)))
-                    }
-                  }
-                case _ => throw new Exception("Enumeration should be of type StringLiteral!")
-              }
+              handleEnums(range.asInstanceOf[SingleValueRange].v, n)
             });
         }
       })
+    def handleEnums (exp: CDLExpression, n:Node):Unit = {
+      exp match {
+				case StringLiteral(v) => {
+              if (v != "") {
+							  if (!enumVariables.contains(Utils.guardEnumValue(v))) {
+                  enumVariables += Utils.guardEnumValue(v)
+							  }
+              }
 
+              // TODO: get rid of all quotes in guardEnumValue function																		
+							val newEnumName = Utils.guardEnumValue(v) + "_" + n.id 
+							enumVariables += newEnumName
+							enums.apply(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName)
+        
+            }
+
+        case LongIntLiteral(v) => {
+						val newEnumName = "" + v + "_" + n.id
+						enumVariables += newEnumName
+						enums(n.id) += GEnumLiteral("" + v, newEnumName)
+        }
+
+        case Conditional(cond, pass, fail) => {
+          handleEnums(pass, n)
+          handleEnums(fail, n)
+        }
+
+        case _ => throw new Exception("Enumeration should be of type StringLiteral: " + exp)
+      }    
+    }
 
     def CDL2GExpression(expr:CDLExpression):GExpression = {
       expr match {
         case StringLiteral(v) =>
+            val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
+            numberPattern.unapplySeq(v) match {
+              case Some(List(numberPart)) => GLongIntLiteral(java.lang.Long.parseLong(numberPart, 16).toLong)
+              case None => {
+                  new GStringLiteral(v)
+                }
+            }
+
+/*
           if (enumVariables.contains(Utils.guardEnumValue(v))) {
             new GEnumLiteral(Utils.guardEnumValue(v), Utils.guardEnumValue(v))
           } else {
@@ -246,6 +266,7 @@ object Main {
                 }
             }
           }
+*/
         case LongIntLiteral(v) =>
           if (v == 0) new GLiteral(v)
           else if (v == 1) {
@@ -258,7 +279,7 @@ object Main {
         case Conditional(cond, pass, fail) => GConditional(CDL2GExpression(cond), CDL2GExpression(pass), CDL2GExpression(fail))
         case Or(left, right) => GOr(CDL2GExpression(left), CDL2GExpression(right))
         case And(left, right) => GAnd(CDL2GExpression(left), CDL2GExpression(right))
-        case Eq(left, right) => GEq(CDL2GExpression(left), CDL2GExpression(right))
+        case Eq(left, right) => transformEq(left, right)
         case NEq(left, right) => GNot(GEq(CDL2GExpression(left), CDL2GExpression(right)))
         case LessThan(left, right) => GLessThan(CDL2GExpression(left), CDL2GExpression(right))
         case LessThanOrEq(left, right) => GLessEqThan(CDL2GExpression(left), CDL2GExpression(right))
@@ -276,7 +297,7 @@ object Main {
         case Div(l,r)=>GDivide(CDL2GExpression(l),CDL2GExpression(r))
         case Mod(l,r)=>GMod(CDL2GExpression(l),CDL2GExpression(r))
         case Not(e) => GNot(CDL2GExpression(e))
-        case FunctionCall("is_substr", List(whole, sub)) => GSubString(CDL2GExpression(whole), CDL2GExpression(sub))
+        case FunctionCall("is_substr", List(whole, sub)) => transformIsSubstring(whole, sub)
         case FunctionCall("bool", List(e)) => GBoolFunc(CDL2GExpression(e))
         case FunctionCall("is_loaded", List(e)) => GIsLoadedFunc(CDL2GExpression(e))
         case FunctionCall("is_active", List(e)) => GIsActiveFunc(CDL2GExpression(e))
@@ -284,6 +305,91 @@ object Main {
         case True() => GBoolLiteral(true)
         case False() => GBoolLiteral(false)
         case _ => throw new Exception("unexpected expression:" + expr)
+      }
+    }
+
+    def getValidEnumLiteral(nodeId: String, originalValue:String):Option[GExpression] = {
+        val enumLiterals = enums.apply(nodeId.trim).
+                filter(e => {e.asInstanceOf[GEnumLiteral].originalValue == originalValue})
+        if (enumLiterals.size == 0) {
+          // We should report an error here: This is a reference to undefined enum value!
+          println("Warning: reference to unknown value")
+          None
+        } else {
+          Some(enumLiterals.toList.apply(0).asInstanceOf[GEnumLiteral])
+        }
+    }
+
+    def getValidEnumLiteralFromExpression(nodeId: String, exp:CDLExpression):GExpression = {
+        exp match {
+          case StringLiteral(v) => {
+            val enum = getValidEnumLiteral(nodeId, "" + v)
+            enum match {
+              case None => throw new Exception("")
+              case Some(v) => v
+            } 
+          }
+          case LongIntLiteral(v) => {
+            val enum = getValidEnumLiteral(nodeId, "" + v)
+            enum match {
+              case None => throw new Exception("")
+              case Some(v) => v
+            } 
+          }
+          case Conditional(cond, pass, fail) => {
+            GConditional(CDL2GExpression(cond), getValidEnumLiteralFromExpression(nodeId, pass), getValidEnumLiteralFromExpression(nodeId, fail))
+          }
+          case _ => throw new Exception("Cannot convert " + nodeId + " to enumerand")
+        }
+    }
+
+    def transformEq(l:CDLExpression, r:CDLExpression):GExpression = {
+      if (l.isInstanceOf[Identifier] && enums.contains(l.asInstanceOf[Identifier].id)) {
+        r match { 
+          case StringLiteral(v) => {
+            val enumLiteral = getValidEnumLiteral(l.asInstanceOf[Identifier].id, v)
+            enumLiteral match {
+              case None => GBoolLiteral(false)
+              case Some(v) => GEq(CDL2GExpression(l), v)
+            } 
+          }
+          case LongIntLiteral(v) => {
+            val enumLiteral = getValidEnumLiteral(l.asInstanceOf[Identifier].id, "" + v)
+            enumLiteral match {
+              case None => GBoolLiteral(false)
+              case Some(v) => GEq(CDL2GExpression(l), v)
+            } 
+
+//            GEq(CDL2GExpression(l), getValidEnumLiteral(l.asInstanceOf[Identifier].id, "" + v))
+          }
+          case _ => throw new Exception("Unexpected equation for object: " + r)
+        }
+      } else {
+        GEq(CDL2GExpression(l), CDL2GExpression(r))
+      }
+    }
+
+    def transformIsSubstring(whole:CDLExpression, sub:CDLExpression):GExpression = {
+      if (whole.isInstanceOf[gsd.cdl.model.Identifier]) {
+        if (enums.contains(whole.asInstanceOf[gsd.cdl.model.Identifier].id)) {
+          val list = enums.apply(whole.asInstanceOf[gsd.cdl.model.Identifier].id).filter(value => {
+                Utils.removeTrailingQuotesFrom(value.asInstanceOf[GEnumLiteral].originalValue)
+                .contains(Utils.removeTrailingQuotesFrom(sub.asInstanceOf[StringLiteral].value))
+            })
+          if (list.size > 0) {
+            list.map( exp => exp match {
+						  case GEnumLiteral(original, real) => 
+                      CDL2GExpression(whole) === exp
+					  }).reduceLeft(_ | _)
+          } else {
+            // we do not have matching legal values, so it can never be true
+            GBoolLiteral(false) 
+          }
+        } else {
+          GSubString(CDL2GExpression(whole), CDL2GExpression(sub))
+        }
+      } else {
+        GSubString(CDL2GExpression(whole), CDL2GExpression(sub))
       }
     }
 
@@ -469,7 +575,18 @@ object Main {
                     val Some(LegalValuesOption(ranges)) = node.legalValues
                     val constraint = ranges.map( _ match {
                                     case MinMaxRange(low, high) => (CDL2GExpression(low) <= createRefData(node.id)) & (createRefData(node.id) <= CDL2GExpression(high))
-                                    case SingleValueRange(v) => CDL2GExpression(v) === createRefData(node.id)
+                                    case SingleValueRange(v) => {
+                                        /**
+                                         * @author: mnovakovic
+                                         * When we are creating the constraint for legal values
+                                         * that are enumerations, we change String and Int literals
+                                         * to GEnumLiterals
+                                         **/
+                                        if (enums.contains(node.id))
+                                          getValidEnumLiteralFromExpression(node.id, v) === createRefData(node.id)
+                                        else
+                                          CDL2GExpression(v) === createRefData(node.id)
+                                    }
                             }).reduceLeft(_ | _)
                     setType(constraint, BoolType)
                     constraints = ((!GAliasReference(node.id+"_effective")) | constraint)::constraints
