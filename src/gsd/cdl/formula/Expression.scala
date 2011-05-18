@@ -7,7 +7,7 @@ import ConditionalCompilation._
 trait Error
 
 class TypeError(expected:Type, oldType:Type, expr:GExpression) extends Error{
-	assert((oldType & expected).isEmpty)
+//	assert((oldType & expected).isEmpty)
 	override def toString() = expr + ":" + oldType + " cannot be converted to " + expected //+ "\nin " + expr.parentList.foldLeft("")((result, parent) => result + "\n\t" + parent)
 	def expectedType = expected
 }
@@ -76,6 +76,8 @@ object GExpressionHelper {
 		case GConditional(GBoolValue(true), pass, fail) => pass
 		case GConditional(GBoolValue(false), pass, fail) => fail
 		case GNot(GBoolValue(true)) => GBoolLiteral(false)
+    // mnovakovic: added this case
+		case GNot(GNot(v)) => v
 		case GNot(GBoolValue(false)) => GBoolLiteral(true)
 		case GPlus(GLongIntValue(0), e) => e
 		case GPlus(e, GLongIntValue(0)) => e
@@ -243,7 +245,7 @@ object TypeGraph {
 				}
 				else {
 					errors += new TypeError(newType, oldType, exprs.head.expr)
-					println("Error 245: " + new TypeError(newType, oldType, exprs.head.expr))
+//					println("Error 245: " + new TypeError(newType, oldType, exprs.head.expr))
 					IF[(CompilationOptions.TRACE_TYPE_PROPAGATION)#v] {
 						println("!!!error recorded")
 					}
@@ -383,7 +385,7 @@ case class GVariable(id:String) extends GVariableLike(id) {
 case class GEnumLiteral(originalValue:String, realValue:String) extends GVariableLike(originalValue) {
 
 	override def toString = {
-	 "enum_" + realValue
+	 "enum(" + realValue + ")"
 	}
 }
 
