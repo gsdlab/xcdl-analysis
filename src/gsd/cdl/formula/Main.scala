@@ -145,18 +145,20 @@ object Main {
     return result.toMap
   }
 
-  val enumVariables = mutable.HashSet[String]()
+  var enumVariables = mutable.HashSet[String]()
   /**
    * key   = node_id
    * value = set of enumerated values
    */
-  val enums = mutable.Map[String, mutable.Set[GExpression]]()
+  var enums = mutable.Map[String, mutable.Set[GExpression]]()
 
   def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
 
     var aliases = mutable.Map[String, GExpression]()
     val variables = mutable.Map[String, GVariable]()
     val errors = mutable.ListBuffer[Error]()
+    enumVariables = mutable.HashSet[String]()
+    enums = mutable.Map[String, mutable.Set[GExpression]]()
 
     case class GAliasReference(id:String) extends GExpression {
       def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (oldType & oldChildTypes.head) match {
@@ -325,14 +327,14 @@ object Main {
           case StringLiteral(v) => {
             val enum = getValidEnumLiteral(nodeId, "" + v)
             enum match {
-              case None => throw new Exception("")
+              case None => throw new Exception("Couldn't find value: " + v + " in feature: " + nodeId + ", with values: " + enums.apply(nodeId)) 
               case Some(v) => v
             } 
           }
           case LongIntLiteral(v) => {
             val enum = getValidEnumLiteral(nodeId, "" + v)
             enum match {
-              case None => throw new Exception("") 
+              case None => throw new Exception("Couldn't find value: " + v + " in feature: " + nodeId + ", with values: " + enums.apply(nodeId)) 
               case Some(v) => v
             } 
           }
