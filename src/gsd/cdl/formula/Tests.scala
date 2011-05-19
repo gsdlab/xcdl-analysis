@@ -40,12 +40,12 @@ object Tests {
 //          })
           if (errors.size > 0) {
             println("contains " + errors.size + " errors")
-            errors.foreach(println)
+//            errors.foreach(println)
           }
           else
           println("contains no errors")
       } catch {
-        case e:Exception => println(e.getMessage)
+        case e:Exception => println("Error! File: " + f + " couldn't be parsed because of an error: " + e.getMessage)
       }
       println()
 

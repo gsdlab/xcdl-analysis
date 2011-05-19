@@ -639,7 +639,7 @@ object Main {
                     }
             }
     }
-
+/*
     output("type inferencing...")
     for((id,expr)<-aliases) TypeGraph.getType(expr)
     constraints.foreach(TypeGraph.getType(_))
@@ -650,7 +650,7 @@ object Main {
     }
     for((expr,t)<-initialTypes) errors ++= TypeGraph.checkAndSetType(expr, t)
     errors ++= TypeGraph.propagateType()
-
+*/
     //remove optionals
     def removeOptionalSingle(t:Any):Any = t match {
             case x@GOptionalBoolFunc(e) if !(TypeGraph.getType(x) >= TypeGraph.getType(e)) && BoolType <= TypeGraph.getType(x) => GBoolFunc(e)
