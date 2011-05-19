@@ -332,7 +332,7 @@ object Main {
           case LongIntLiteral(v) => {
             val enum = getValidEnumLiteral(nodeId, "" + v)
             enum match {
-              case None => throw new Exception("")
+              case None => throw new Exception("") 
               case Some(v) => v
             } 
           }
