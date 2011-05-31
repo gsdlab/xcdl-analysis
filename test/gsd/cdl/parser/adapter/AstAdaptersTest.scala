@@ -25,7 +25,7 @@ class AstAdaptersTest extends JUnitSuite {
     }
     @Test
     def testAllImlFiles() = {
-        for (file <- new java.io.File(TestFile.get("gsd/cdl/parser/adapter/input/iml/")).listFiles(new java.io.FilenameFilter() {
+        for (file <- new java.io.File(TestFile.getRelativeToProjectRoot("/input/iml/")).listFiles(new java.io.FilenameFilter() {
             def accept(dir:java.io.File, name:String):Boolean = {
                 return name.endsWith(".iml") ;
             }

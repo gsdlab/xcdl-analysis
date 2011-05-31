@@ -4183,7 +4183,7 @@ package CYGPKG_IO_WATCHDOG{
     }
 
     option CYGIMP_WATCHDOG_HARDWARE{
-      display "use "hardware" watchdog"
+      display "use watchdog"
       implements [CYGINT_WATCHDOG_IMPLEMENTATIONS ]
     }
   }

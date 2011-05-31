@@ -300,7 +300,7 @@ package CYGPKG_HAL{
       display "The CPU architecture supports THUMB mode"
     }
 
-    option CYGHWR_THUMB{
+    option CYGHWR_THUMB {
       display "Enable Thumb instruction set"
       active_if [CYGINT_HAL_ARM_THUMB_ARCH != 0 ]
     }

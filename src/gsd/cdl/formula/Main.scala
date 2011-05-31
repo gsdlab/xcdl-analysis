@@ -72,6 +72,170 @@ object Main {
   case class DuplicatedIDs(id:String) extends Error {
     override def toString = "Duplicated id: " + id
   }
+ 
+  def parseFileWithEnums(file:String):(Map[String, Set[GExpression]], Map[String, GVariable], List[GExpression], List[Error]) = {
+   val (vars, constraints, errors) = convertToGeneralModel(EcosIML.parseFile(file))
+   (enums, vars, constraints, errors)
+  }
+
+  def getApproximatedTypesCount(file:String):ApproximatedTypesCounter = {
+    // let this function populate all vars and everything    
+    convertToGeneralModel(EcosIML.parseFile(file))
+//    println("NEW CONSTRAINTS OUTPUT")
+    var counter = new ApproximatedTypesCounter()
+
+//    println("Nodes size: " + allNodesMap.size + ", printing")
+    
+    var inferrencedVariableNames = mutable.Set[String]()
+    var allIdentifierNames = mutable.Set[String]()
+    var allTypableIdentifierNames = mutable.Set[String]()
+    var allNoneFlavors = mutable.Set[String]()
+    var allPackages = mutable.Set[String]()
+    var allNonBooleanInterfaces = mutable.Set[String]()
+    var allEnumNames = mutable.Set[String]()
+    var allBooleanNames = mutable.Set[String]()
+
+    allEnumNames ++= enums.keys
+
+    allNodesMap.keys.foreach(value => {
+     allIdentifierNames += value;
+    })
+
+    allIdentifierNames.foreach(value => {
+      val node = allNodesMap.apply(value)
+      if (node.flavor == NoneFlavor) {
+         if (node.cdlType == PackageType) {
+           allPackages += value
+         } else {
+           allNoneFlavors += value;
+         }
+      } else {
+         allTypableIdentifierNames += value;
+      }
+      // add bool flavors as Booleans
+      if (node.flavor == BoolFlavor) {
+       allBooleanNames += value
+      }
+      if (node.cdlType == InterfaceType) {
+       if (node.flavor != BoolFlavor) {
+        allNonBooleanInterfaces += value
+       }
+      }
+    })
+
+    variables.keys.foreach(value => {
+     if (value.endsWith("_bool_var")) {
+      if (!variables.keys.toList.contains(value.replaceAll("_bool_var", "_data_var")) && 
+        !variables.keys.toList.contains(value.replaceAll("_bool_var", "_scalar_var"))
+      ) {
+         if (!allBooleanNames.contains(value.replaceAll("_bool_var", "")))
+         println("Warning: Identifier: " + value.replaceAll("_bool_var", "") + 
+              " is seen as boolean, but it does not have the BoolFlavor")
+      }
+      inferrencedVariableNames += value.replaceAll("_bool_var", "")
+     } else if (value.endsWith("_data_var")) {
+      inferrencedVariableNames += value.replaceAll("_data_var", "")
+     } else if (value.endsWith("_scalar_var")) {
+      inferrencedVariableNames += value.replaceAll("_scalar_var", "")
+     } else {
+      throw new Exception(value)     
+     }
+
+    })
+
+   var differenceInferedNotInfered = allTypableIdentifierNames -- inferrencedVariableNames.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allEnumNames.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allNonBooleanInterfaces.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allBooleanNames.toList
+
+   //println("Unique inferenced variables size: " + inferrencedVariableNames.size)
+   //println("Unique indentifiers size: " + allIdentifierNames.size)
+   //println("Unique typable size: " + allTypableIdentifierNames.size)
+   //println("Unique UNtypable size: " + allNoneFlavors.size)
+   //println("Difference: " + differenceInferedNotInfered.size)
+   //differenceInferedNotInfered.foreach(println)
+   //println("Enums size: " + allEnumNames.size)
+
+   var inferencedTypes = mutable.Map[String, Option[String]]()
+   // first add enumerations 
+   allEnumNames.foreach(value => {inferencedTypes += (value -> Some("enum"))})
+   counter.addEnum(allEnumNames.size)
+   // then add uninferred, and put them as a string
+   differenceInferedNotInfered.foreach(value => {inferencedTypes += (value -> Some("string"))})
+   counter.addString(differenceInferedNotInfered.size)
+   //interfaces that are not booleans are int
+   allNonBooleanInterfaces.foreach(value => {inferencedTypes += (value -> Some("int"))})
+   counter.addInt(allNonBooleanInterfaces.size)
+   // definitive boolean types
+   allBooleanNames.foreach(value => {inferencedTypes += (value -> Some("bool"))})
+   counter.addBool(allBooleanNames.size)
+   // add none flavors
+   allNoneFlavors.foreach(value => {inferencedTypes += (value -> Some("none"))})
+   counter.addNone(allNoneFlavors.size)
+   // add packages
+   allPackages.foreach(value => {inferencedTypes += (value -> Some("package"))})
+   counter.addPackage(allPackages.size)
+
+    inferrencedVariableNames.foreach(value => {
+       var valueName = value + "_bool_var"
+       if (!variables.contains(valueName)) {
+         valueName = value + "_data_var"
+         if (!variables.contains(valueName)) {
+           valueName = value + "_scalar_var"
+         }
+       } else {
+         // bool_data
+         if (variables.contains(value + "_data_var")) {
+           valueName = value + "_data_var"
+         }
+
+         if (variables.contains(value + "_scalar_var")) {
+           valueName = value + "_scalar_var"
+         }
+       }
+       variables.apply(valueName).getType match {
+        case IntType => {
+         if (!inferencedTypes.contains(value)) {
+          inferencedTypes += (value -> Some("int"))
+          counter.addInt(1)
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case StringType => {
+         if (!inferencedTypes.contains(value)) {
+          inferencedTypes += (value -> Some("string"))
+          counter.addString(1) 
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case DisjunctiveType(types) => {
+         if (!inferencedTypes.contains(value)) {
+           if (value.contains("SIZE") || value.contains("COUNT") || 
+             value.contains("PORT") || value.contains("PORT")) {
+             inferencedTypes += (value -> Some("int"))
+             counter.addInt(1)
+           } else {
+             inferencedTypes += (value -> Some("string"))
+             counter.addString(1)
+           }
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case _ => {}
+       }
+      }
+    )
+
+    if (inferencedTypes.size != counter.getTotalCount || counter.getTotalCount != allIdentifierNames.size) {
+     println("PROBLEM in file!: " + file)
+    }
+//    (allIdentifierNames.toList.diff(inferencedTypes.keys.toList)).foreach(println)
+    
+    counter
+  }
 
   def parseFile(file:String):(Map[String, GVariable], List[GExpression], List[Error]) = convertToGeneralModel(EcosIML.parseFile(file))
 
@@ -97,37 +261,6 @@ object Main {
     serialization.writeObject(constraints)
     serialization.close
   }
-  //mnovakovic - ENUMS
-  // TODO: Calculated enumerations!
-  def isEnumeration(node: Node): Boolean = {
-    if (node.legalValues != None) {
-      val Some(LegalValuesOption(ranges)) = node.legalValues
-      (ranges.collect{case range: SingleValueRange => range}.
-       filter(isCandidateForEnum).size > 0) // we have at least one string value
-    } else
-      false
-  }
-  /**
-   * A SingleValueRange is a candidate for enum if
-   * it's list of values has at least 1 String
-   */
-  def isCandidateForEnum(expr:SingleValueRange) : Boolean = {
-    expr.v match {
-      case StringLiteral(v) =>
-              val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
-              numberPattern.unapplySeq(v) match {
-                      case Some(List(numberPart)) => false
-                      case None => {
-                            true
-                       }
-            }
-      // Conditional will always return either String or Int
-      // TODO: In theory, it can also return boolean, which is an error, 
-      // but should we check for that?!?
-      case Conditional(cond, pass, fail) => true
-      case _ => false
-    }
-  }
 
   def reverse[K,V](m:Iterable[(K,V)]):Map[V,List[K]] = {
     val result = mutable.Map[V, List[K]]()
@@ -145,20 +278,46 @@ object Main {
     return result.toMap
   }
 
-  var enumVariables = mutable.HashSet[String]()
+//  var enumVariables = mutable.HashSet[String]()
   /**
    * key   = node_id
    * value = set of enumerated values
    */
   var enums = mutable.Map[String, mutable.Set[GExpression]]()
+  var allNodesMap:Map[String, Node] = mutable.Map[String, Node]()
+  var variables = mutable.Map[String, GVariable]()
+
+  def produceEnumerations(nodes:Seq[Node]):mutable.Map[String, mutable.Set[GExpression]] = {
+    import gsd.cdl.formula.Enumerations._
+    var enums = mutable.Map[String, mutable.Set[GExpression]]()
+    val allNodes:List[Node] = collectl { case n:Node => n }(nodes).map(_ match {
+        case Node(id, PackageType, display, description, flavor, defaultValues, calculated, legalValues, reqs, activeIfs, implements, children) => Node(id, PackageType, display, description, NoneFlavor, defaultValues, calculated, legalValues, reqs, activeIfs, implements, children)
+        case x@_ => x
+      } )
+
+    allNodes.foreach(n => {
+        if (isEnumeration(n)) {
+          enums += (n.id -> scala.collection.mutable.Set[GExpression]())
+          val possibleValues = listPossibleValues(n)
+          possibleValues.foreach(
+            value => {
+             enums.apply(n.id) += GEnumLiteral(Utils.guardEnumValue(value), "" + Utils.guardEnumValue(value) + "_" + n.id)
+            }
+          )
+        }
+      })
+   enums
+  }
 
   def convertToGeneralModel(nodes:Seq[Node], output:String=>Unit = print):(Map[String, GVariable], List[GExpression], List[Error]) = {
-
+    import gsd.cdl.formula.Enumerations._
+    gsd.cdl.formula.TypeGraph.clear()
     var aliases = mutable.Map[String, GExpression]()
-    val variables = mutable.Map[String, GVariable]()
+    variables = mutable.Map[String, GVariable]()
     val errors = mutable.ListBuffer[Error]()
-    enumVariables = mutable.HashSet[String]()
-    enums = mutable.Map[String, mutable.Set[GExpression]]()
+//    enumVariables = mutable.HashSet[String]()
+    enums = produceEnumerations(nodes)
+    allNodesMap = mutable.Map[String, Node]()
 
     case class GAliasReference(id:String) extends GExpression {
       def getDesiredTypes(oldType:Type, oldChildTypes:List[Type]) = (oldType & oldChildTypes.head) match {
@@ -203,37 +362,29 @@ object Main {
     /*
      * Creates a map from each node id to the node itself.
      */
-    val allNodesMap:Map[String, Node] = allNodes.map(n => (n.id, n)).toMap[String, Node]
+    allNodesMap = allNodes.map(n => (n.id, n)).toMap[String, Node]
 
-    allNodes.foreach(n => {
-        if (isEnumeration(n)) {
-          enums += (n.id -> scala.collection.mutable.Set[GExpression]())
-          val Some(LegalValuesOption(ranges)) = n.legalValues
-          ranges.foreach((range:Range) => {
-              handleEnums(range.asInstanceOf[SingleValueRange].v, n)
-            });
-        }
-      })
+/*
     def handleEnums (exp: CDLExpression, n:Node):Unit = {
       exp match {
 				case StringLiteral(v) => {
               if (v != "") {
-							  if (!enumVariables.contains(Utils.guardEnumValue(v))) {
-                  enumVariables += Utils.guardEnumValue(v)
-							  }
+							      if (!enumVariables.contains(Utils.guardEnumValue(v))) {
+                      enumVariables += Utils.guardEnumValue(v)
+							      }
               }
 
-              // TODO: get rid of all quotes in guardEnumValue function																		
-							val newEnumName = Utils.guardEnumValue(v) + "_" + n.id 
-							enumVariables += newEnumName
-							enums.apply(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName)
-        
+                     // TODO: get rid of all quotes in guardEnumValue function																		
+							       val newEnumName = Utils.guardEnumValue(v) + "_" + n.id 
+							       enumVariables += newEnumName
+							       enums.apply(n.id) += GEnumLiteral(Utils.guardEnumValue(v), newEnumName)
+               
             }
 
         case LongIntLiteral(v) => {
-						val newEnumName = "" + v + "_" + n.id
-						enumVariables += newEnumName
-						enums(n.id) += GEnumLiteral("" + v, newEnumName)
+						    val newEnumName = "" + v + "_" + n.id
+						    enumVariables += newEnumName
+						    enums(n.id) += GEnumLiteral("" + v, newEnumName)
         }
 
         case Conditional(cond, pass, fail) => {
@@ -244,7 +395,7 @@ object Main {
         case _ => throw new Exception("Enumeration should be of type StringLiteral: " + exp)
       }    
     }
-
+*/
     def CDL2GExpression(expr:CDLExpression):GExpression = {
       expr match {
         case StringLiteral(v) =>
@@ -255,20 +406,6 @@ object Main {
                   new GStringLiteral(v)
                 }
             }
-
-/*
-          if (enumVariables.contains(Utils.guardEnumValue(v))) {
-            new GEnumLiteral(Utils.guardEnumValue(v), Utils.guardEnumValue(v))
-          } else {
-            val numberPattern = """0[xX]([0123456789abcdefABCDEF]+)""".r
-            numberPattern.unapplySeq(v) match {
-              case Some(List(numberPart)) => GLongIntLiteral(java.lang.Long.parseLong(numberPart, 16).toLong)
-              case None => {
-                  new GStringLiteral(v)
-                }
-            }
-          }
-*/
         case LongIntLiteral(v) =>
           if (v == 0) new GLiteral(v)
           else if (v == 1) {
@@ -315,7 +452,7 @@ object Main {
                 filter(e => {e.asInstanceOf[GEnumLiteral].originalValue == originalValue})
         if (enumLiterals.size == 0) {
           // We should report an error here: This is a reference to undefined enum value!
-          println("Warning: reference to unknown value")
+          println("Warning: reference to unknown value for node: " + nodeId)
           None
         } else {
           Some(enumLiterals.toList.apply(0).asInstanceOf[GEnumLiteral])
@@ -641,7 +778,7 @@ object Main {
                     }
             }
     }
-/*
+
     output("type inferencing...")
     for((id,expr)<-aliases) TypeGraph.getType(expr)
     constraints.foreach(TypeGraph.getType(_))
@@ -652,7 +789,7 @@ object Main {
     }
     for((expr,t)<-initialTypes) errors ++= TypeGraph.checkAndSetType(expr, t)
     errors ++= TypeGraph.propagateType()
-*/
+
     //remove optionals
     def removeOptionalSingle(t:Any):Any = t match {
             case x@GOptionalBoolFunc(e) if !(TypeGraph.getType(x) >= TypeGraph.getType(e)) && BoolType <= TypeGraph.getType(x) => GBoolFunc(e)
@@ -766,7 +903,6 @@ object Main {
     //		deadFeatureNames = mutable.Set() ++ deadFeatureNames.map(_.replaceAll("_active", ""))
 
     output("total errors:" + errors.size + "\n")
-
 
     (variables, constraints, errors.toList)
     }
