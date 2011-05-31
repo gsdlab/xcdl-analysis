@@ -1,0 +1,26 @@
+option A {
+  legal_values ["GDB" "None" 1 2 3]
+  flavor data 
+}
+
+option B {
+  legal_values ["GDB" "None" ]
+  flavor data 
+}
+
+option C {
+  legal_values ["GDB"]
+  flavor data 
+}
+
+option D {
+  calculated ["src/i386.ld" ]
+  flavor data 
+}
+
+option E {
+  calculated [CYG_HAL_STARTUP == "RAM" ? (CYGHWR_HAL_I386_PC_LOAD_HIGH ? "i386_pc_ram_hi" : "i386_pc_ram") : CYG_HAL_STARTUP == "ROM" ? "i386_pc_rom" : CYG_HAL_STARTUP == "GRUB" ? (CYGHWR_HAL_I386_PC_LOAD_HIGH ? "i386_pc_grub_hi" : "i386_pc_grub") : "i386_pc_floppy" ]
+  flavor data 
+}
+
+
