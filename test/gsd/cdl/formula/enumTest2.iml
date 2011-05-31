@@ -1,0 +1,9 @@
+option A {
+  legal_values [1 2 3]
+  flavor data 
+}
+
+option A {
+  calculated [1 == 2 ? 1 : 2]
+  flavor data 
+}
