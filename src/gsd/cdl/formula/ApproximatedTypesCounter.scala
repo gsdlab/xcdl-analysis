@@ -5,7 +5,10 @@ class ApproximatedTypesCounter() {
   private var intType = 0
   private var stringType = 0
   private var boolType = 0
-  private var enumType = 0
+//  private var enumType = 0
+  private var integerEnumType = 0
+  private var stringEnumType = 0
+  private var mixedEnumType = 0
   private var noneType = 0
   private var packageType = 0
   private var total = 0
@@ -22,8 +25,20 @@ class ApproximatedTypesCounter() {
    boolType += amount
   }
 
-  def addEnum(amount:Int) = {
-   enumType += amount
+//  def addEnum(amount:Int) = {
+//   enumType += amount
+//  }
+
+  def addIntegerEnum(amount:Int) = {
+   integerEnumType += amount
+  }
+
+  def addStringEnum(amount:Int) = {
+   stringEnumType += amount
+  }
+
+  def addMixedEnum(amount:Int) = {
+   mixedEnumType += amount
   }
 
   def addPackage(amount:Int) = {
@@ -54,16 +69,31 @@ class ApproximatedTypesCounter() {
    noneType
   }
 
+/*
   def getEnumCount():Int = {
    enumType
   }
+*/
+
+  def getStringEnumCount():Int = {
+   stringEnumType
+  }
+
+  def getIntegerEnumCount():Int = {
+   integerEnumType
+  }
+
+  def getMixedEnumCount():Int = {
+   mixedEnumType
+  }
 
   def getTotalCount():Int = {
-   enumType + noneType + packageType + intType + boolType + stringType
+   stringEnumType + integerEnumType + mixedEnumType +
+   noneType + packageType + intType + boolType + stringType
   }
 
   override def toString() = {
-   "Enums: " + enumType + ", strings: " + stringType + 
+   "Mixed enums: " + mixedEnumType + ", strings: " + stringType + 
    ", integers: " + intType + ", booleans: " + boolType
   }
 }

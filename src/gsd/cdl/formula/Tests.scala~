@@ -28,7 +28,6 @@ object Tests {
   def printFileResults (f: File, out:java.io.FileWriter) = {
       print("*** File " + f.getName + ": ")
 //      try {
-/*
       val info = Main.getApproximatedTypesCount(f.getAbsolutePath)
       out.write(f.getName + ";" + info.getStringCount + ";"  + 
       info.getIntCount + ";" + info.getBoolCount + ";" + 
@@ -37,7 +36,6 @@ object Tests {
       info.getMixedEnumCount + ";" +
       info.getTotalCount +
       "\n")
-*/
       gsd.cdl.formula.TypeGraph.clear()
 /*
         val (enums, variables, expressions, errors) = Main.parseFileWithEnums(f.getAbsoluteFile.toString)

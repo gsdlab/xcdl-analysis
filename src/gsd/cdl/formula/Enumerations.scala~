@@ -6,6 +6,16 @@ import collection._
 import org.kiama.rewriting.Rewriter._
 import gsd.cdl.parser.EcosIML
 
+/**
+ * Describes enumeration types
+ */
+object EnumerationTypes {
+   val INTEGERS = 0
+   val STRINGS = 1
+   val COMBINED = 2
+   val UNDEFINED = -1
+}
+
 object Enumerations {
 
   private val TREAT_INTEGERS_ONLY_AS_ENUMS = true

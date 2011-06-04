@@ -22,8 +22,8 @@ object Run {
 //      Main.parseFileWithEnums(file)
 
 
-//   val info = Main.getApproximatedTypesCount(file)
-//   println("*** INFO: " + info.getBoolCount);
+   val info = Main.getApproximatedTypesCount(file)
+   println("*** INFO: " + info.getBoolCount);
 //    errors.foreach(println)
    println("Parsing file: " + file)
     

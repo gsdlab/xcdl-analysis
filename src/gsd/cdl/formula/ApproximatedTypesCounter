@@ -1,0 +1,345 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+package gsd.cdl.formula
+
+import java.io.File
+import java.io.FileFilter
+import gsd.cdl.parser.EcosIML
+
+object ApproximatedTypesCounter {
+  
+  def main(args:Array[String]) = {
+     val out = new java.io.FileWriter("highlevel_approximatedTypes.csv")
+
+     val fs = new File("input/iml/").listFiles(new FileFilter() {
+        def accept(pathname:File) = pathname.getName.endsWith(".iml")
+     })
+
+     out.write("filename;int_enums;string_enums;mixed_enums\n")
+
+     for(f <- fs) {
+        printFileResults(f, out)
+     }
+     out.close()
+  }
+
+  def printFileResults (f: File, out:java.io.FileWriter) = {
+      print("*** File " + f.getName + "\n")
+      gsd.cdl.formula.TypeGraph.clear()
+
+      val enums = Main.produceEnumerations(EcosIML.parseFile(f.getAbsolutePath))
+
+      var intNumber = 0
+      var stringNumber = 0
+      var mixedNumber = 0
+
+      enums.foreach(value => {
+        if (value._2.enumType == EnumerationTypes.INTEGERS) {
+         intNumber += 1
+        } else if (value._2.enumType == EnumerationTypes.STRINGS) {
+         stringNumber += 1
+        } else {
+         mixedNumber += 1
+        }
+      })
+      
+      out.write(f.getName + ";" + intNumber + ";" + stringNumber + ";"  + mixedNumber + "\n")
+
+      out.flush
+  }
+
+  def getApproximatedTypesCount(file:String):ApproximatedTypesCounter = {
+    // let this function populate all vars and everything    
+    convertToGeneralModel(EcosIML.parseFile(file))
+//    println("NEW CONSTRAINTS OUTPUT")
+    var counter = new ApproximatedTypesCounter()
+
+//    println("Nodes size: " + allNodesMap.size + ", printing")
+    
+    var inferrencedVariableNames = mutable.Set[String]()
+    var allIdentifierNames = mutable.Set[String]()
+    var allTypableIdentifierNames = mutable.Set[String]()
+    var allNoneFlavors = mutable.Set[String]()
+    var allPackages = mutable.Set[String]()
+    var allNonBooleanInterfaces = mutable.Set[String]()
+    var allIntegerEnumNames = mutable.Set[String]()
+    var allStringEnumNames = mutable.Set[String]()
+    var allMixedEnumNames = mutable.Set[String]()
+    var allBooleanNames = mutable.Set[String]()
+
+    var allEnumNames = mutable.Set[String]()
+
+
+//    allEnumNames ++= enums.keys
+    allEnumNames ++= enumsButCooler.keys
+
+    enumsButCooler.foreach(value => {
+      if (value._2.enumType == EnumerationTypes.INTEGERS) {
+       allIntegerEnumNames += value._1
+      } else if (value._2.enumType == EnumerationTypes.STRINGS) {
+       allStringEnumNames += value._1
+      } else {
+       allMixedEnumNames += value._1
+      }
+    })
+
+    allNodesMap.keys.foreach(value => {
+     allIdentifierNames += value;
+    })
+
+    allIdentifierNames.foreach(value => {
+      val node = allNodesMap.apply(value)
+      if (node.flavor == NoneFlavor) {
+         if (node.cdlType == PackageType) {
+           allPackages += value
+         } else {
+           allNoneFlavors += value;
+         }
+      } else {
+         allTypableIdentifierNames += value;
+      }
+      // add bool flavors as Booleans
+      if (node.flavor == BoolFlavor) {
+       allBooleanNames += value
+      }
+      if (node.cdlType == InterfaceType) {
+       if (node.flavor != BoolFlavor) {
+        allNonBooleanInterfaces += value
+       }
+      }
+    })
+
+    variables.keys.foreach(value => {
+     if (value.endsWith("_bool_var")) {
+      if (!variables.keys.toList.contains(value.replaceAll("_bool_var", "_data_var")) && 
+        !variables.keys.toList.contains(value.replaceAll("_bool_var", "_scalar_var"))
+      ) {
+         if (!allBooleanNames.contains(value.replaceAll("_bool_var", "")))
+         println("Warning: Identifier: " + value.replaceAll("_bool_var", "") + 
+              " is seen as boolean, but it does not have the BoolFlavor")
+      }
+      inferrencedVariableNames += value.replaceAll("_bool_var", "")
+     } else if (value.endsWith("_data_var")) {
+      inferrencedVariableNames += value.replaceAll("_data_var", "")
+     } else if (value.endsWith("_scalar_var")) {
+      inferrencedVariableNames += value.replaceAll("_scalar_var", "")
+     } else {
+      throw new Exception(value)     
+     }
+
+    })
+
+   var differenceInferedNotInfered = allTypableIdentifierNames -- inferrencedVariableNames.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allEnumNames.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allNonBooleanInterfaces.toList
+   differenceInferedNotInfered = differenceInferedNotInfered -- allBooleanNames.toList
+
+   //println("Unique inferenced variables size: " + inferrencedVariableNames.size)
+   //println("Unique indentifiers size: " + allIdentifierNames.size)
+   //println("Unique typable size: " + allTypableIdentifierNames.size)
+   //println("Unique UNtypable size: " + allNoneFlavors.size)
+   //println("Difference: " + differenceInferedNotInfered.size)
+   //differenceInferedNotInfered.foreach(println)
+   //println("Enums size: " + allEnumNames.size)
+
+   var inferencedTypes = mutable.Map[String, Option[String]]()
+   // first add enumerations 
+//   allEnumNames.foreach(value => {inferencedTypes += (value -> Some("enum"))})
+//   counter.addEnum(allEnumNames.size)
+
+   // integer enums
+   allIntegerEnumNames.foreach(value => {inferencedTypes += (value -> Some("integer_enum"));})
+   counter.addIntegerEnum(allIntegerEnumNames.size)
+
+   // string enums
+   allStringEnumNames.foreach(value => {inferencedTypes += (value -> Some("string_enum")); })
+   counter.addStringEnum(allStringEnumNames.size)
+
+   // mixed enums
+   allMixedEnumNames.foreach(value => {inferencedTypes += (value -> Some("mixed_enum")); })
+   counter.addMixedEnum(allMixedEnumNames.size)
+
+   // then add uninferred, and put them as a string
+   differenceInferedNotInfered.foreach(value => {inferencedTypes += (value -> Some("string"))})
+   counter.addString(differenceInferedNotInfered.size)
+
+   //interfaces that are not booleans are int
+   allNonBooleanInterfaces.foreach(value => {inferencedTypes += (value -> Some("int"))})
+   counter.addInt(allNonBooleanInterfaces.size)
+
+   // definitive boolean types
+   allBooleanNames.foreach(value => {inferencedTypes += (value -> Some("bool"))})
+   counter.addBool(allBooleanNames.size)
+
+   // add none flavors
+   allNoneFlavors.foreach(value => {inferencedTypes += (value -> Some("none"))})
+   counter.addNone(allNoneFlavors.size)
+
+   // add packages
+   allPackages.foreach(value => {inferencedTypes += (value -> Some("package"))})
+   counter.addPackage(allPackages.size)
+
+    inferrencedVariableNames.foreach(value => {
+       var valueName = value + "_bool_var"
+       if (!variables.contains(valueName)) {
+         valueName = value + "_data_var"
+         if (!variables.contains(valueName)) {
+           valueName = value + "_scalar_var"
+         }
+       } else {
+         // bool_data
+         if (variables.contains(value + "_data_var")) {
+           valueName = value + "_data_var"
+         }
+
+         if (variables.contains(value + "_scalar_var")) {
+           valueName = value + "_scalar_var"
+         }
+       }
+       variables.apply(valueName).getType match {
+        case IntType => {
+         if (!inferencedTypes.contains(value)) {
+          inferencedTypes += (value -> Some("int"))
+          counter.addInt(1)
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case StringType => {
+         if (!inferencedTypes.contains(value)) {
+          inferencedTypes += (value -> Some("string"))
+          counter.addString(1) 
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case DisjunctiveType(types) => {
+         if (!inferencedTypes.contains(value)) {
+           if (value.contains("SIZE") || value.contains("COUNT") || 
+             value.contains("PORT") || value.contains("PORT")) {
+             inferencedTypes += (value -> Some("int"))
+             counter.addInt(1)
+           } else {
+             inferencedTypes += (value -> Some("string"))
+             counter.addString(1)
+           }
+         } else {
+//          println("Already influenced: " + value + " with value: " + inferencedTypes.apply(value))
+         }
+        }
+        case _ => {}
+       }
+      }
+    )
+
+    if (inferencedTypes.size != counter.getTotalCount || counter.getTotalCount != allIdentifierNames.size) {
+     println("PROBLEM in file!: " + file)
+    }
+//    (allIdentifierNames.toList.diff(inferencedTypes.keys.toList)).foreach(println)
+    
+    counter
+  }
+
+}
+
+
+class ApproximatedTypesCounter() {
+
+  private var intType = 0
+  private var stringType = 0
+  private var boolType = 0
+//  private var enumType = 0
+  private var integerEnumType = 0
+  private var stringEnumType = 0
+  private var mixedEnumType = 0
+  private var noneType = 0
+  private var packageType = 0
+  private var total = 0
+
+  def addNone(amount:Int) = {
+   noneType += amount
+  }
+
+  def addInt(amount:Int) = {
+   intType += amount
+  }
+
+  def addBool(amount:Int) = {
+   boolType += amount
+  }
+
+//  def addEnum(amount:Int) = {
+//   enumType += amount
+//  }
+
+  def addIntegerEnum(amount:Int) = {
+   integerEnumType += amount
+  }
+
+  def addStringEnum(amount:Int) = {
+   stringEnumType += amount
+  }
+
+  def addMixedEnum(amount:Int) = {
+   mixedEnumType += amount
+  }
+
+  def addPackage(amount:Int) = {
+   packageType += amount
+  }
+
+  def addString(amount:Int) = {
+   stringType += amount
+  }
+
+  def getStringCount():Int = {
+   stringType
+  }
+
+  def getBoolCount():Int = {
+   boolType
+  }
+
+  def getIntCount():Int = {
+   intType
+  }  
+  
+  def getPackageCount():Int = {
+   packageType
+  }
+
+  def getNoneCount():Int = {
+   noneType
+  }
+
+/*
+  def getEnumCount():Int = {
+   enumType
+  }
+*/
+
+  def getStringEnumCount():Int = {
+   stringEnumType
+  }
+
+  def getIntegerEnumCount():Int = {
+   integerEnumType
+  }
+
+  def getMixedEnumCount():Int = {
+   mixedEnumType
+  }
+
+  def getTotalCount():Int = {
+   stringEnumType + integerEnumType + mixedEnumType +
+   noneType + packageType + intType + boolType + stringType
+  }
+
+  override def toString() = {
+   "Mixed enums: " + mixedEnumType + ", strings: " + stringType + 
+   ", integers: " + intType + ", booleans: " + boolType
+  }
+}
